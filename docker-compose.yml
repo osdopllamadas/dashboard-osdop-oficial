@@ -1,13 +1,13 @@
-version: '3.8'
+version: '3.3'
 services:
   dashboard-osdop:
-    build: .
     image: dashboard-osdop:latest
+    build: .
     ports:
       - "3000:3000"
     environment:
-      - VITE_ULTRAVOX_KEY=MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c
-      - PORT=3000
+      VITE_ULTRAVOX_KEY: "MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c"
+      PORT: "3000"
     deploy:
       restart_policy:
-        condition: any
+        condition: on-failure
