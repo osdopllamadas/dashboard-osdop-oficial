@@ -181,11 +181,18 @@ app.get('/api/dashboard-summary', async (req, res) => {
 });
 
 // Serve static files from React build
-const buildPath = path.join(__dirname, '../dist');
+const buildPath = path.resolve(__dirname, '../dist');
+console.log(`[Server] Serving static files from: ${buildPath}`);
 app.use(express.static(buildPath));
 
 app.get('*', (req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'));
+    const indexPath = path.join(buildPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+        if (err) {
+            console.error(`[Server] Error sending index.html from ${indexPath}:`, err);
+            res.status(404).send("Frontend build not found. Make sure 'npm run build' was successful.");
+        }
+    });
 });
 
 // Initialization
