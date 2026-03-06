@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  dashboard-osdop:
+    build: .
+    ports:
+      - "5174:80"
+    restart: always
+    container_name: dashboard_oficial_osdop
