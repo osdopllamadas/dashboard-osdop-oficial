@@ -5,17 +5,7 @@ import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
 
 const Minutes = () => {
-  const [filters, setFilters] = useState(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 7);
-    return {
-      preset: 'Últimos 7 días',
-      from: from.toISOString().split('T')[0],
-      to: to.toISOString().split('T')[0]
-    };
-  });
-  const { allCalls, isFetchingGlobal } = useCalls();
+  const { allCalls, isFetchingGlobal, filters, setFilters } = useCalls();
 
   const filteredCalls = useMemo(() => {
     if (!allCalls) return [];
@@ -41,12 +31,12 @@ const Minutes = () => {
   }, [allCalls, filters]);
 
   const stats = useMemo(() => ultravoxService.getStats(filteredCalls), [filteredCalls]);
-  const isLoading = isFetchingGlobal && filteredCalls.length === 0;
+  const isLoadingInitial = isFetchingGlobal && allCalls.length === 0;
 
   const handleDownload = () => {
     const csvContent = "data:text/csv;charset=utf-8,"
       + ["ID,Teléfono,Fecha,Minutos,Costo"].join(",") + "\n"
-      + filteredCalls.map(c => [c.callId, c.customerPhoneNumber, c.created, (c.billedDuration / 60).toFixed(2), ((c.billedDuration / 60) * 0.065).toFixed(3)].join(",")).join("\n");
+      + filteredCalls.map(c => [c.callId, c.customerPhoneNumber, c.created, (parseFloat(c.billedDuration || 0) / 60).toFixed(2), ((parseFloat(c.billedDuration || 0) / 60) * 0.065).toFixed(3)].join(",")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -57,89 +47,99 @@ const Minutes = () => {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container animate-fade-in">
       <div className="header-row">
         <header className="page-header">
           <h1>Análisis de <span className="text-primary-gradient">Minutos y Costos</span></h1>
           <p>Control detallado de consumo y facturación proyectada</p>
         </header>
         <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {isLoading && (
+          {isFetchingGlobal && (
             <div className="loading-badge">
               <RefreshCcw size={14} className="spin-icon" /> Sincronizando...
             </div>
           )}
-          <button className="download-btn-outline" onClick={handleDownload} disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1 }}>
+          <button className="download-btn-outline" onClick={handleDownload} disabled={isLoadingInitial} style={{ opacity: isLoadingInitial ? 0.7 : 1 }}>
             <Download size={16} /> Exportar Reporte
           </button>
         </div>
       </div>
 
-      <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} />
+      <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} filters={filters} />
 
-      <div className="stats-grid-small mb-4">
-        <div className="stat-card glass">
-          <div className="icon-rounded blue"><Clock size={20} /></div>
-          <div className="stat-text">
-            <span className="label">Minutos Totales</span>
-            <span className="value">{stats.totalMinutes}m</span>
+      {isLoadingInitial ? (
+        <div className="initial-loading-container">
+          <div className="spinner-large"></div>
+          <p>Calculando costos y minutos...</p>
+        </div>
+      ) : (
+        <div className="content-fade-up">
+          <div className="stats-grid-small mb-4">
+            <div className="stat-card glass">
+              <div className="icon-rounded blue"><Clock size={20} /></div>
+              <div className="stat-text">
+                <span className="label">Minutos Totales</span>
+                <span className="value">{stats.totalMinutes}m</span>
+              </div>
+            </div>
+
+            <div className="stat-card glass">
+              <div className="icon-rounded green"><DollarSign size={20} /></div>
+              <div className="stat-text">
+                <span className="label">Costo Total</span>
+                <span className="value">${stats.totalCost}</span>
+                <span className="sub">Tasa: $0.065/min</span>
+              </div>
+            </div>
+
+            <div className="stat-card glass">
+              <div className="icon-rounded orange"><TrendingUp size={20} /></div>
+              <div className="stat-text">
+                <span className="label">Promedio Duración</span>
+                <span className="value">{stats.avgDuration}</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="stat-card glass">
-          <div className="icon-rounded green"><DollarSign size={20} /></div>
-          <div className="stat-text">
-            <span className="label">Costo Total</span>
-            <span className="value">${stats.totalCost}</span>
-            <span className="sub">Tasa: $0.065/min</span>
-          </div>
-        </div>
-
-        <div className="stat-card glass">
-          <div className="icon-rounded orange"><TrendingUp size={20} /></div>
-          <div className="stat-text">
-            <span className="label">Promedio Duración</span>
-            <span className="value">{stats.avgDuration}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="table-wrapper glass">
-        <div className="table-header-custom">
-          <h2>Desglose por Llamada</h2>
-        </div>
-        <table className="custom-table">
-          <thead>
-            <tr>
-              <th>Teléfono</th>
-              <th>Fecha</th>
-              <th>Duración</th>
-              <th>Minutos Fact.</th>
-              <th>Costo Proyectado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCalls.map(call => {
-              const durSeconds = parseFloat(call.billedDuration || 0);
-              const durMinutes = durSeconds / 60;
-              const cost = durMinutes * 0.065;
-
-              return (
-                <tr key={call.callId}>
-                  <td className="tel-cell">
-                    <Phone size={14} className="text-muted" />
-                    {call.customerPhoneNumber || 'Oculto'}
-                  </td>
-                  <td>{new Date(call.created).toLocaleDateString()}</td>
-                  <td>{durSeconds}s</td>
-                  <td className="fact-min">{durMinutes.toFixed(2)}m</td>
-                  <td className="cost-cell text-success">${cost.toFixed(3)}</td>
+          <div className="table-wrapper glass">
+            <div className="table-header-custom">
+              <h2>Desglose por Llamada</h2>
+            </div>
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Teléfono</th>
+                  <th>Fecha</th>
+                  <th>Duración</th>
+                  <th>Minutos Fact.</th>
+                  <th>Costo Proyectado</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {filteredCalls.map(call => {
+                  const durSeconds = parseFloat(call.billedDuration || 0);
+                  const durMinutes = durSeconds / 60;
+                  const cost = durMinutes * 0.065;
+
+                  return (
+                    <tr key={call.callId}>
+                      <td className="tel-cell">
+                        <Phone size={14} className="text-muted" />
+                        {call.customerPhoneNumber || 'Oculto'}
+                      </td>
+                      <td>{new Date(call.created).toLocaleDateString()}</td>
+                      <td>{durSeconds}s</td>
+                      <td className="fact-min">{durMinutes.toFixed(2)}m</td>
+                      <td className="cost-cell text-success">${cost.toFixed(3)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
 
       <style jsx="true">{`
         .header-row {

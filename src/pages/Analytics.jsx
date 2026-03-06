@@ -9,17 +9,7 @@ import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
 
 const Analytics = () => {
-    const [filters, setFilters] = useState(() => {
-        const to = new Date();
-        const from = new Date();
-        from.setDate(from.getDate() - 7);
-        return {
-            preset: 'Últimos 7 días',
-            from: from.toISOString().split('T')[0],
-            to: to.toISOString().split('T')[0]
-        };
-    });
-    const { allCalls, isFetchingGlobal } = useCalls();
+    const { allCalls, isFetchingGlobal, filters, setFilters } = useCalls();
 
     const filteredCalls = useMemo(() => {
         if (!allCalls) return [];
@@ -45,7 +35,8 @@ const Analytics = () => {
     }, [allCalls, filters]);
 
     const stats = useMemo(() => ultravoxService.getStats(filteredCalls), [filteredCalls]);
-    const isLoading = isFetchingGlobal && filteredCalls.length === 0;
+    const isLoadingInitial = isFetchingGlobal && allCalls.length === 0;
+
     const chartData = useMemo(() => {
         if (!filteredCalls.length) return [];
         const daily = {};
@@ -73,14 +64,14 @@ const Analytics = () => {
     }, [filteredCalls]);
 
     return (
-        <div className="page-container">
+        <div className={`page-container animate-fade-in`}>
             <div className="header-row">
                 <header className="page-header">
                     <h1>Analytics <span className="text-secondary-gradient">Avanzado</span></h1>
                     <p>Análisis detallado de métricas y tendencias</p>
                 </header>
                 <div className="header-actions">
-                    {isLoading && (
+                    {isFetchingGlobal && (
                         <div className="loading-badge">
                             <RefreshCcw size={14} className="spin-icon" /> Sincronizando...
                         </div>
@@ -91,64 +82,73 @@ const Analytics = () => {
                 </div>
             </div>
 
-            <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} />
+            <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} filters={filters} />
 
-            <div className="stats-row">
-                <StatCard title="Total Llamadas" value={stats.totalCalls} sub="Total filtrado" icon={<Phone />} color="blue" />
-                <StatCard title="Tasa Éxito" value={stats.successRate} sub="Rendimiento" icon={<CheckCircle />} color="green" />
-                <StatCard title="Fallidas" value={stats.failedCalls} sub="Errores detectados" icon={<AlertCircle />} color="red" />
-                <StatCard title="Duración Prom." value={stats.avgDuration} sub="Por llamada" icon={<Clock />} color="orange" />
-                <StatCard title="Minutos Totales" value={stats.totalMinutes} sub="Minutos facturados" icon={<Activity />} color="purple" />
-                <StatCard title="Costo Total" value={`$${stats.totalCost}`} sub="Tasa $0.065/min" icon={<DollarSign />} color="cyan" />
-            </div>
-
-            <div className="charts-grid-main mt-4">
-                <div className="chart-card glass">
-                    <div className="chart-info">
-                        <h3>Llamadas en el Tiempo</h3>
-                        <p>Volumen diario de llamadas</p>
+            {isLoadingInitial ? (
+                <div className="initial-loading-container">
+                    <div className="spinner-large"></div>
+                    <p>Cargando datos de llamadas...</p>
+                </div>
+            ) : (
+                <div className="content-fade-up">
+                    <div className="stats-row">
+                        <StatCard title="Total Llamadas" value={stats.totalCalls} sub="Total filtrado" icon={<Phone />} color="blue" />
+                        <StatCard title="Tasa Éxito" value={stats.successRate} sub="Rendimiento" icon={<CheckCircle />} color="green" />
+                        <StatCard title="Fallidas" value={stats.failedCalls} sub="Errores detectados" icon={<AlertCircle />} color="red" />
+                        <StatCard title="Duración Prom." value={stats.avgDuration} sub="Por llamada" icon={<Clock />} color="orange" />
+                        <StatCard title="Minutos Totales" value={stats.totalMinutes} sub="Minutos facturados" icon={<Activity />} color="purple" />
+                        <StatCard title="Costo Total" value={`$${stats.totalCost}`} sub="Tasa $0.065/min" icon={<DollarSign />} color="cyan" />
                     </div>
-                    <div className="chart-box">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={chartData}>
-                                <defs>
-                                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                                <YAxis stroke="#64748b" fontSize={12} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                />
-                                <Area type="monotone" dataKey="calls" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#areaGradient)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+
+                    <div className="charts-grid-main mt-4">
+                        <div className="chart-card glass">
+                            <div className="chart-info">
+                                <h3>Llamadas en el Tiempo</h3>
+                                <p>Volumen diario de llamadas</p>
+                            </div>
+                            <div className="chart-box">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <AreaChart data={chartData}>
+                                        <defs>
+                                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                                        <YAxis stroke="#64748b" fontSize={12} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                        />
+                                        <Area type="monotone" dataKey="calls" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#areaGradient)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="chart-card glass">
+                            <div className="chart-info">
+                                <h3>Actividad por Hora</h3>
+                                <p>Horarios pico de llamadas</p>
+                            </div>
+                            <div className="chart-box">
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={hourlyData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                        <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                                        <YAxis stroke="#64748b" fontSize={12} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
+                                        />
+                                        <Bar dataKey="calls" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div className="chart-card glass">
-                    <div className="chart-info">
-                        <h3>Actividad por Hora</h3>
-                        <p>Horarios pico de llamadas</p>
-                    </div>
-                    <div className="chart-box">
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={hourlyData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                                <YAxis stroke="#64748b" fontSize={12} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                />
-                                <Bar dataKey="calls" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
+            )}
 
             <style jsx="true">{`
         .header-row {
@@ -163,9 +163,6 @@ const Analytics = () => {
           gap: 12px;
         }
 
-        .spin-icon { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(-360deg); } }
-        
         .loading-badge {
           background: rgba(59, 130, 246, 0.1);
           color: #60a5fa;
@@ -217,6 +214,7 @@ const Analytics = () => {
           .charts-grid-main { grid-template-columns: 1fr; }
         }
       `}</style>
+
         </div>
     );
 };

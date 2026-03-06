@@ -1,79 +1,78 @@
 import React, { useState } from 'react';
 import { Search, RotateCcw, Calendar, Phone, Clock, ChevronDown } from 'lucide-react';
 
-const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
-  const [activePreset, setActivePreset] = useState('Todos');
-  const [dateRange, setDateRange] = useState({
-    from: '',
-    to: ''
+const FilterBar = ({ onFilterChange, resultsCount = 0, filters }) => {
+  const [localFilters, setLocalFilters] = useState({
+    preset: filters?.preset || 'Todos',
+    from: filters?.from || '',
+    to: filters?.to || '',
+    phone: filters?.phone || '',
+    minSec: filters?.minSec || 0,
+    status: filters?.status || 'Todos'
   });
-  const [phone, setPhone] = useState('');
-  const [minSec, setMinSec] = useState(0);
-  const [status, setStatus] = useState('Todos');
 
   const presets = ['Hoy', 'Ayer', 'Últimos 7 días', 'Últimos 30 días', 'Este mes', 'Este año', 'Todos'];
 
-  const handleClear = () => {
-    setActivePreset('Todos');
-    setDateRange({ from: '', to: '' });
-    setPhone('');
-    setMinSec(0);
-    setStatus('Todos');
-    onFilterChange({ preset: 'Todos', phone: '', minSec: 0, status: 'Todos', from: '', to: '' });
-  };
+  const handlePresetClick = (p) => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    let newDateRange = { from: '', to: '' };
 
-
-  const updateFilter = (updates) => {
-    let newDateRange = { ...dateRange };
-    let newActivePreset = updates.activePreset || activePreset;
-
-    if (updates.activePreset) {
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
-
-      if (updates.activePreset === 'Hoy') {
-        newDateRange = { from: todayStr, to: todayStr };
-      } else if (updates.activePreset === 'Ayer') {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().split('T')[0];
-        newDateRange = { from: yStr, to: yStr };
-      } else if (updates.activePreset === 'Últimos 7 días') {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        newDateRange = { from: d.toISOString().split('T')[0], to: todayStr };
-      } else if (updates.activePreset === 'Últimos 30 días') {
-        const d = new Date();
-        d.setDate(d.getDate() - 30);
-        newDateRange = { from: d.toISOString().split('T')[0], to: todayStr };
-      } else if (updates.activePreset === 'Este mes') {
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        newDateRange = { from: firstDay, to: todayStr };
-      } else if (updates.activePreset === 'Este año') {
-        const firstDayOfYear = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        newDateRange = { from: firstDayOfYear, to: todayStr };
-      } else if (updates.activePreset === 'Todos') {
-        newDateRange = { from: '', to: '' };
-      }
-
-      setActivePreset(newActivePreset);
-      setDateRange(newDateRange);
+    if (p === 'Hoy') {
+      newDateRange = { from: todayStr, to: todayStr };
+    } else if (p === 'Ayer') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      newDateRange = { from: yesterday.toISOString().split('T')[0], to: yesterday.toISOString().split('T')[0] };
+    } else if (p === 'Últimos 7 días') {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      newDateRange = { from: d.toISOString().split('T')[0], to: todayStr };
+    } else if (p === 'Últimos 30 días') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      newDateRange = { from: d.toISOString().split('T')[0], to: todayStr };
+    } else if (p === 'Este mes') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      newDateRange = { from: firstDay, to: todayStr };
+    } else if (p === 'Este año') {
+      const firstDayOfYear = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      newDateRange = { from: firstDayOfYear, to: todayStr };
     }
 
-    const newFilters = {
-      preset: newActivePreset,
-      phone: updates.phone !== undefined ? updates.phone : phone,
-      minSec: updates.minSec !== undefined ? updates.minSec : minSec,
-      status: updates.status !== undefined ? updates.status : status,
-      from: newDateRange.from,
-      to: newDateRange.to
+    const updated = {
+      ...localFilters,
+      preset: p,
+      ...newDateRange
     };
+    setLocalFilters(updated);
+    // Presets apply immediately for better UX
+    onFilterChange(updated);
+  };
 
-    if (updates.phone !== undefined) setPhone(updates.phone);
-    if (updates.minSec !== undefined) setMinSec(updates.minSec);
-    if (updates.status !== undefined) setStatus(updates.status);
+  const handleApply = () => {
+    onFilterChange(localFilters);
+  };
 
-    onFilterChange(newFilters);
+  const handleClear = () => {
+    const cleared = {
+      preset: 'Todos',
+      from: '',
+      to: '',
+      phone: '',
+      minSec: 0,
+      status: 'Todos'
+    };
+    setLocalFilters(cleared);
+    onFilterChange(cleared);
+  };
+
+  const updateLocal = (key, value) => {
+    setLocalFilters(prev => ({
+      ...prev,
+      [key]: value,
+      preset: (key === 'from' || key === 'to') ? 'Personalizado' : prev.preset
+    }));
   };
 
   return (
@@ -86,8 +85,8 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
           {presets.map(p => (
             <button
               key={p}
-              className={`preset-btn ${activePreset === p ? 'active' : ''}`}
-              onClick={() => updateFilter({ activePreset: p })}
+              className={`preset-btn ${localFilters.preset === p ? 'active' : ''}`}
+              onClick={() => handlePresetClick(p)}
             >
               {p}
             </button>
@@ -95,27 +94,21 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
         </div>
 
         <div className="date-inputs">
-          <div className="date-wrapper">
-            <Calendar size={14} />
+          <div className="date-wrapper" onClick={(e) => e.currentTarget.querySelector('input').showPicker?.()}>
+            <Calendar size={14} className="calendar-icon" />
             <input
               type="date"
-              value={dateRange.from}
-              onChange={(e) => {
-                setDateRange({ ...dateRange, from: e.target.value });
-                updateFilter({ activePreset: 'Personalizado' });
-              }}
+              value={localFilters.from}
+              onChange={(e) => updateLocal('from', e.target.value)}
             />
           </div>
-          <span>a</span>
-          <div className="date-wrapper">
-            <Calendar size={14} />
+          <span className="date-sep">a</span>
+          <div className="date-wrapper" onClick={(e) => e.currentTarget.querySelector('input').showPicker?.()}>
+            <Calendar size={14} className="calendar-icon" />
             <input
               type="date"
-              value={dateRange.to}
-              onChange={(e) => {
-                setDateRange({ ...dateRange, to: e.target.value });
-                updateFilter({ activePreset: 'Personalizado' });
-              }}
+              value={localFilters.to}
+              onChange={(e) => updateLocal('to', e.target.value)}
             />
           </div>
         </div>
@@ -125,10 +118,14 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
           <input
             type="text"
             placeholder="Teléfono..."
-            value={phone}
-            onChange={(e) => updateFilter({ phone: e.target.value })}
+            value={localFilters.phone}
+            onChange={(e) => updateLocal('phone', e.target.value)}
           />
         </div>
+
+        <button className="apply-btn" onClick={handleApply}>
+          Aplicar Filtros
+        </button>
       </div>
 
       <div className="bottom-row">
@@ -136,13 +133,16 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
           <span>Min seg:</span>
           <input
             type="number"
-            value={minSec}
-            onChange={(e) => updateFilter({ minSec: e.target.value })}
+            value={localFilters.minSec}
+            onChange={(e) => updateLocal('minSec', e.target.value)}
           />
         </div>
 
         <div className="input-field status-select">
-          <select value={status} onChange={(e) => updateFilter({ status: e.target.value })}>
+          <select
+            value={localFilters.status}
+            onChange={(e) => updateLocal('status', e.target.value)}
+          >
             <option value="Todos">Estado</option>
             <option value="Completada">Completada</option>
             <option value="Fallida">Fallida</option>
@@ -156,9 +156,10 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
 
         <button className="clear-btn" onClick={handleClear}>
           <RotateCcw size={14} />
-          Limpiar filtros
+          Limpiar
         </button>
       </div>
+
 
 
       <style jsx="true">{`
@@ -217,16 +218,36 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
           align-items: center;
           gap: 8px;
           background: var(--bg-input);
-          padding: 6px 10px;
-          border-radius: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
           border: 1px solid var(--border-color);
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+        
+        .date-wrapper:hover {
+          border-color: var(--primary);
+          background: rgba(139, 92, 246, 0.05);
+        }
+        
+        .calendar-icon {
+          color: var(--primary);
+          opacity: 0.7;
         }
 
         .date-wrapper input {
           background: none;
           border: none;
           color: white;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
+          font-family: inherit;
+          cursor: pointer;
+          width: 110px;
+        }
+        
+        .date-sep {
+          color: var(--text-muted);
+          font-weight: 500;
         }
 
         .input-field {
@@ -272,43 +293,72 @@ const FilterBar = ({ onFilterChange, resultsCount = 0 }) => {
           color: #64748b;
         }
 
+        .apply-btn {
+          background: linear-gradient(135deg, var(--primary), #7c3aed);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+          border: none;
+          cursor: pointer;
+        }
+
+        .apply-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 15px rgba(139, 92, 246, 0.4);
+          filter: brightness(1.1);
+        }
+
+        .apply-btn:active {
+          transform: translateY(0);
+        }
+
         .results-info {
           margin-left: auto;
           font-size: 0.75rem;
           color: var(--text-muted);
           background: rgba(255,255,255,0.03);
-          padding: 4px 10px;
-          border-radius: 4px;
+          padding: 6px 12px;
+          border-radius: 6px;
+          border: 1px solid rgba(255,255,255,0.05);
         }
         
-        .results-label { font-weight: 500; }
+        .results-label { font-weight: 500; color: var(--primary); margin-right: 4px; }
 
         .clear-btn {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: var(--text-secondary);
+          color: var(--text-muted);
           font-size: 0.8rem;
           padding: 6px 12px;
           border-radius: 6px;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
-        .clear-btn:hover { background: rgba(255,0,0,0.1); color: #ef4444; }
+        .clear-btn:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
 
         input[type="date"]::-webkit-calendar-picker-indicator {
           filter: invert(1);
           cursor: pointer;
         }
 
-        .results-count {
-          color: var(--text-muted);
-          margin-left: 4px;
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          opacity: 0;
         }
 
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(1);
-          cursor: pointer;
+        @media (max-width: 768px) {
+          .preset-row, .bottom-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .phone-field { max-width: none; }
+          .apply-btn { width: 100%; }
         }
+
       `}</style>
     </div>
   );

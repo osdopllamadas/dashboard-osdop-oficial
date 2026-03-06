@@ -6,18 +6,7 @@ import { useCalls } from '../context/CallContext';
 
 const Historial = () => {
   const [selectedCall, setSelectedCall] = useState(null);
-  const [filters, setFilters] = useState(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 7);
-    return {
-      preset: 'Últimos 7 días',
-      from: from.toISOString().split('T')[0],
-      to: to.toISOString().split('T')[0]
-    };
-  });
-
-  const { allCalls, isFetchingGlobal } = useCalls();
+  const { allCalls, isFetchingGlobal, filters, setFilters } = useCalls();
 
   const filteredCalls = useMemo(() => {
     if (!allCalls) return [];
@@ -50,7 +39,7 @@ const Historial = () => {
     });
   }, [allCalls, filters]);
 
-  const isLoading = isFetchingGlobal && filteredCalls.length === 0;
+  const isLoadingInitial = isFetchingGlobal && allCalls.length === 0;
 
   const handleDownload = () => {
     // Función para escapar comas y comillas en el CSV
@@ -81,122 +70,132 @@ const Historial = () => {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container animate-fade-in">
       <div className="header-row">
         <header className="page-header">
           <h1>Historial de <span className="text-secondary-gradient">Llamadas</span></h1>
           <p>Registro completo de interacciones — {filteredCalls.length} resultados</p>
         </header>
         <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {isLoading && (
+          {isFetchingGlobal && (
             <div className="loading-badge">
               <RefreshCcw size={14} className="spin-icon" /> Sincronizando...
             </div>
           )}
-          <button className="download-btn" onClick={handleDownload} disabled={isLoading} style={{ opacity: isLoading ? 0.7 : 1 }}>
+          <button className="download-btn" onClick={handleDownload} disabled={isLoadingInitial} style={{ opacity: isLoadingInitial ? 0.7 : 1 }}>
             <Download size={16} /> Descargar CSV
           </button>
         </div>
       </div>
 
-      <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} />
+      <FilterBar onFilterChange={setFilters} resultsCount={filteredCalls.length} filters={filters} />
 
-      <div className="table-container-modern glass">
-        <table className="modern-table">
-          <thead>
-            <tr>
-              <th>Teléfono</th>
-              <th>Fecha y Hora</th>
-              <th>Duración</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCalls.map(call => (
+      {isLoadingInitial ? (
+        <div className="initial-loading-container">
+          <div className="spinner-large"></div>
+          <p>Cargando historial de registros...</p>
+        </div>
+      ) : (
+        <div className="content-fade-up">
 
-              <tr key={call.callId}>
-                <td className="tel-cell clickable" onClick={() => setSelectedCall(call)}>
-                  <div className="icon-circle"><Phone size={14} /></div>
-                  {call.customerPhoneNumber || 'Oculto'}
-                </td>
-                <td>
-                  <div className="dateTime">
-                    <span className="date">{new Date(call.created).toLocaleDateString()}</span>
-                    <span className="time">{new Date(call.created).toLocaleTimeString()}</span>
-                  </div>
-                </td>
-                <td>
-                  {/* Clean up duration (remove 's' if already present) */}
-                  {(call.billedDurationSeconds || call.billedDuration || '0').toString().replace('s', '')}s
-                </td>
-                <td>
-                  <span className={`badge ${['normal', 'agent_ended', 'hangup', 'completed'].includes(call.endReason) ? 'success' : 'error'}`}>
-                    {['normal', 'agent_ended', 'hangup', 'completed'].includes(call.endReason) ? 'Completada' : 'Fallida'}
-                  </span>
-                </td>
-                <td>
-                  <button className="view-btn" onClick={() => setSelectedCall(call)}>Ver Detalle</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <div className="table-container-modern glass">
+            <table className="modern-table">
+              <thead>
+                <tr>
+                  <th>Teléfono</th>
+                  <th>Fecha y Hora</th>
+                  <th>Duración</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCalls.map(call => (
 
-        </table>
-      </div>
+                  <tr key={call.callId}>
+                    <td className="tel-cell clickable" onClick={() => setSelectedCall(call)}>
+                      <div className="icon-circle"><Phone size={14} /></div>
+                      {call.customerPhoneNumber || 'Oculto'}
+                    </td>
+                    <td>
+                      <div className="dateTime">
+                        <span className="date">{new Date(call.created).toLocaleDateString()}</span>
+                        <span className="time">{new Date(call.created).toLocaleTimeString()}</span>
+                      </div>
+                    </td>
+                    <td>
+                      {/* Clean up duration (remove 's' if already present) */}
+                      {(call.billedDurationSeconds || call.billedDuration || '0').toString().replace('s', '')}s
+                    </td>
+                    <td>
+                      <span className={`badge ${['normal', 'agent_ended', 'hangup', 'completed'].includes(call.endReason) ? 'success' : 'error'}`}>
+                        {['normal', 'agent_ended', 'hangup', 'completed'].includes(call.endReason) ? 'Completada' : 'Fallida'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="view-btn" onClick={() => setSelectedCall(call)}>Ver Detalle</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
 
-      {
-        selectedCall && (
-          <div className="modal-overlay" onClick={() => setSelectedCall(null)}>
-            <div className="modal-content glass" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <div>
-                  <h2>Detalle de Llamada</h2>
-                  <p>{selectedCall.customerPhoneNumber || 'Oculto'}</p>
-                </div>
-                <button className="close-btn" onClick={() => setSelectedCall(null)}>
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="modal-body">
-                <div className="detail-section">
-                  <div className="detail-title">
-                    <Info size={16} /> Razon de la llamada
-                  </div>
-                  <p className="detail-text">
-                    {selectedCall.endReason === 'normal' ? 'Llamada finalizada correctamente por el usuario.' :
-                      selectedCall.endReason === 'agent_ended' ? 'Llamada finalizada por el agente.' :
-                        `Llamada interrumpida: ${selectedCall.endReason}`}
-                  </p>
-                </div>
-
-                <div className="detail-section">
-                  <div className="detail-title">
-                    <MessageSquare size={16} /> Resumen
-                  </div>
-                  <p className="detail-text summary">
-                    {selectedCall.summary || 'No hay un resumen disponible para esta llamada.'}
-                  </p>
-                </div>
-
-                {selectedCall.recordingUrl && (
-                  <div className="detail-section audio-section">
-                    <div className="detail-title">
-                      <Music size={16} /> Grabación de Audio
-                    </div>
-                    <div className="audio-player-container">
-                      <audio controls src={selectedCall.recordingUrl} className="custom-audio">
-                        Tu navegador no soporta el elemento de audio.
-                      </audio>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            </table>
           </div>
-        )
-      }
+
+          {
+            selectedCall && (
+              <div className="modal-overlay" onClick={() => setSelectedCall(null)}>
+                <div className="modal-content glass" onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <div>
+                      <h2>Detalle de Llamada</h2>
+                      <p>{selectedCall.customerPhoneNumber || 'Oculto'}</p>
+                    </div>
+                    <button className="close-btn" onClick={() => setSelectedCall(null)}>
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="modal-body">
+                    <div className="detail-section">
+                      <div className="detail-title">
+                        <Info size={16} /> Razon de la llamada
+                      </div>
+                      <p className="detail-text">
+                        {selectedCall.endReason === 'normal' ? 'Llamada finalizada correctamente por el usuario.' :
+                          selectedCall.endReason === 'agent_ended' ? 'Llamada finalizada por el agente.' :
+                            `Llamada interrumpida: ${selectedCall.endReason}`}
+                      </p>
+                    </div>
+
+                    <div className="detail-section">
+                      <div className="detail-title">
+                        <MessageSquare size={16} /> Resumen
+                      </div>
+                      <p className="detail-text summary">
+                        {selectedCall.summary || 'No hay un resumen disponible para esta llamada.'}
+                      </p>
+                    </div>
+
+                    {selectedCall.recordingUrl && (
+                      <div className="detail-section audio-section">
+                        <div className="detail-title">
+                          <Music size={16} /> Grabación de Audio
+                        </div>
+                        <div className="audio-player-container">
+                          <audio controls src={selectedCall.recordingUrl} className="custom-audio">
+                            Tu navegador no soporta el elemento de audio.
+                          </audio>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          }
+        </div>
+      )}
 
       <style jsx="true">{`
         .header-row {
