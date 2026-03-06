@@ -11,3 +11,10 @@ services:
     deploy:
       restart_policy:
         condition: on-failure
+      labels:
+        # Estas líneas le dicen a Traefik cómo manejar tu dominio
+        - "traefik.enable=true"
+        - "traefik.http.routers.dashboard-osdop.rule=Host(`dashboard.mateoia.store`)"
+        - "traefik.http.routers.dashboard-osdop.entrypoints=websecure"
+        - "traefik.http.routers.dashboard-osdop.tls=true"
+        - "traefik.http.services.dashboard-osdop.loadbalancer.server.port=3000"
