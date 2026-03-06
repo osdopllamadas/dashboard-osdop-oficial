@@ -2,101 +2,197 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fetch from 'node-fetch';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-const PORT = process.env.PORT || 3001;
-const API_KEY = process.env.ULTRAVOX_API_KEY;
+const PORT = process.env.PORT || 80; // Standard for Docker
+const API_KEY = process.env.VITE_ULTRAVOX_KEY || 'MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c';
 const BASE_URL = 'https://api.ultravox.ai/api';
 
 app.use(cors());
 app.use(express.json());
 
-// In-memory cache
-let cache = {
-    data: null,
-    timestamp: 0
+// --- AGGREGATOR LOGIC (Integrated from server_aggregator.js) ---
+let globalCache = {
+    callsData: { results: [] },
+    usageData: {},
+    agentsData: {},
+    isInitialLoaded: false
 };
-const CACHE_DURATION = 10000; // 10 seconds
 
-const fetchUltravox = async (endpoint) => {
-    const url = `${BASE_URL}${endpoint}`;
-    console.log(`[Backend] Fetching Ultravox: ${url}`);
+let syncInProgress = false;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    const response = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': API_KEY, // Stick to what was working
-            'Authorization': `Bearer ${API_KEY}` // Complement as per requirements
+const fetchUltravox = async (endpoint, retries = 3) => {
+    const url = endpoint.startsWith('http') ? endpoint : `${BASE_URL}${endpoint}`;
+    for (let i = 0; i < retries; i++) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': API_KEY,
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+                if (response.status === 429) {
+                    await sleep(Math.pow(2, i) * 2000);
+                    continue;
+                }
+                throw new Error(`Ultravox Error: ${response.status}`);
+            }
+            return await response.json();
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (i === retries - 1) throw err;
+            await sleep(2000);
         }
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Ultravox API Error (${response.status}): ${errorText}`);
     }
-
-    return response.json();
 };
 
 const normalizeData = (callsData, usageData, agentsData) => {
-    // Basic stats calculation from usage or calls
     const totals = usageData?.allTime || {};
     const dailyUsage = usageData?.daily || [];
 
-    // Normalize calls
-    const normalizedCalls = (callsData.results || []).map(call => ({
-        id: call.callId,
-        agent_id: call.agentId,
-        duration: call.billedDurationSeconds || call.billedDuration || 0,
-        status: call.endReason || 'unknown',
-        timestamp: call.created,
-        summary: call.summary,
-        customerPhoneNumber: call.customerPhoneNumber
-    }));
+    const normalizedCalls = (callsData.results || []).map(call => {
+        let rawReason = call.endReason || 'unknown';
+        let reason = String(rawReason).toLowerCase();
+        const successKeywords = ['normal', 'ended', 'hangup', 'completed', 'success', 'hung'];
+        const isSuccess = successKeywords.some(k => reason.includes(k));
+        let finalReason = isSuccess ? 'completed' : reason;
 
-    // Step 5 structure: totalCalls, totalMinutes, successCalls, failedCalls, callsPerAgent, agents, calls
+        let phone = 'Oculto';
+        if (call.customerPhoneNumber) phone = call.customerPhoneNumber;
+
+        let meta = call.metadata || {};
+        if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
+        }
+
+        if (phone === 'Oculto') {
+            phone = meta['ultravox.sip.caller_id'] ||
+                meta['ultravox.sip.from_display_name'] ||
+                meta['caller_id'] ||
+                meta['phone'] ||
+                'Oculto';
+        }
+
+        if (phone === 'Oculto' && call.requestContext?.ultravox?.sip?.caller_id) {
+            phone = call.requestContext.ultravox.sip.caller_id;
+        }
+
+        if (phone === 'Oculto' && meta['ultravox.sip.from_uri']) {
+            const match = meta['ultravox.sip.from_uri'].match(/sip:([^@]+)@/);
+            if (match) phone = match[1];
+        }
+
+        return {
+            callId: call.callId,
+            agentId: call.agentId,
+            billedDuration: call.billedDurationSeconds || call.billedDuration || 0,
+            endReason: finalReason,
+            state: call.state,
+            created: call.created,
+            summary: call.summary,
+            customerPhoneNumber: phone,
+            recordingUrl: call.recordingUrl
+        };
+    });
+
+    const successList = normalizedCalls.filter(c => c.endReason === 'completed');
+
     return {
         totalCalls: totals.totalCount || normalizedCalls.length,
         totalMinutes: (totals.billedMinutes || 0).toFixed(2),
-        successCalls: normalizedCalls.filter(c => c.status === 'normal' || c.status === 'agent_ended').length,
-        failedCalls: normalizedCalls.filter(c => c.status !== 'normal' && c.status !== 'agent_ended').length,
-        callsPerAgent: {}, // Can be calculated if needed
-        agents: agentsData.results || [],
+        successCalls: successList.length,
+        failedCalls: normalizedCalls.length - successList.length,
+        callsPerAgent: {},
+        agents: (agentsData.results || []).map(a => ({ id: a.agentId, name: a.name })),
         calls: normalizedCalls,
-        dailyUsage: dailyUsage
+        dailyUsage: dailyUsage,
+        isSyncing: syncInProgress
     };
 };
 
-app.get('/api/dashboard-summary', async (req, res) => {
+const triggerFullSync = async () => {
+    if (syncInProgress) return;
+    syncInProgress = true;
+    console.log('[Aggregator] Starting full history sync...');
     try {
-        const now = Date.now();
-        if (cache.data && (now - cache.timestamp < CACHE_DURATION)) {
-            console.log('[Backend] Serving from cache');
-            return res.json(cache.data);
+        let nextUrl = '/calls?pageSize=1000';
+        let safetyCounter = 0;
+        while (nextUrl && safetyCounter < 1000) {
+            const data = await fetchUltravox(nextUrl);
+            if (data.results && data.results.length > 0) {
+                const map = new Map();
+                globalCache.callsData.results.forEach(c => map.set(c.callId, c));
+                data.results.forEach(c => map.set(c.callId, c));
+                globalCache.callsData.results = Array.from(map.values()).sort((a, b) => new Date(b.created) - new Date(a.created));
+                console.log(`[Aggregator] Sync progress: ${globalCache.callsData.results.length} calls`);
+            }
+            nextUrl = data.next || null;
+            safetyCounter++;
+            await sleep(1000);
         }
+        console.log('[Aggregator] Full sync complete.');
+    } catch (err) {
+        console.error('[Aggregator] Sync Error:', err);
+    } finally {
+        syncInProgress = false;
+    }
+};
 
-        console.log('[Backend] Fetching fresh data...');
-        // Step 3: Parallel aggregation
-        const [callsData, usageData, agentsData] = await Promise.all([
-            fetchUltravox('/calls?pageSize=100'), // Quick first page
+const triggerRealTimePoll = async () => {
+    try {
+        const [recentCalls, usage, agents] = await Promise.all([
+            fetchUltravox('/calls?pageSize=50'),
             fetchUltravox('/accounts/me/usage/calls'),
             fetchUltravox('/agents')
         ]);
-
-        const normalized = normalizeData(callsData, usageData, agentsData);
-
-        cache.data = normalized;
-        cache.timestamp = now;
-
-        res.json(normalized);
-    } catch (error) {
-        console.error('[Backend] Aggregation Error:', error.message);
-        res.status(500).json({ error: error.message });
+        if (recentCalls.results) {
+            const map = new Map();
+            globalCache.callsData.results.forEach(c => map.set(c.callId, c));
+            recentCalls.results.forEach(c => map.set(c.callId, c));
+            globalCache.callsData.results = Array.from(map.values()).sort((a, b) => new Date(b.created) - new Date(a.created));
+        }
+        globalCache.usageData = usage;
+        globalCache.agentsData = agents;
+        globalCache.isInitialLoaded = true;
+    } catch (err) {
+        console.error('[Aggregator] Polling Error:', err);
     }
+};
+
+// --- ENDPOINTS ---
+app.get('/api/dashboard-summary', async (req, res) => {
+    // Return data even if syncing
+    const data = normalizeData(globalCache.callsData, globalCache.usageData, globalCache.agentsData);
+    res.json(data);
 });
 
-app.listen(PORT, () => {
-    console.log(`[Backend] Aggregator running on http://localhost:${PORT}`);
+// Serve static files from React build
+const buildPath = path.join(__dirname, '../dist');
+app.use(express.static(buildPath));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+// Initialization
+app.listen(PORT, async () => {
+    console.log(`[Server] Dashboard running on port ${PORT}`);
+    console.log('[Server] Initializing aggregator...');
+    await triggerRealTimePoll();
+    triggerFullSync(); // Background
+    setInterval(triggerRealTimePoll, 10000);
 });

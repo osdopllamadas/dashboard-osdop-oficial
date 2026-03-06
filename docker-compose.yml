@@ -2,7 +2,12 @@ version: '3.8'
 services:
   dashboard-osdop:
     build: .
+    image: dashboard-osdop:latest
     ports:
       - "5174:80"
-    restart: always
-    container_name: dashboard_oficial_osdop
+    environment:
+      - VITE_ULTRAVOX_KEY=MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c
+      - PORT=80
+    deploy:
+      restart_policy:
+        condition: any
