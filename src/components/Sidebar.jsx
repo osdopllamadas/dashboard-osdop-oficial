@@ -5,6 +5,7 @@ import {
   BarChart2,
   BarChart3,
   Activity,
+  PhoneCall,
   Clock,
   Brain,
   Globe,
@@ -39,7 +40,7 @@ const Sidebar = () => {
       <div className="sidebar-header">
         <div className="logo-container">
           <div className="logo-icon">
-            <BarChart3 size={20} />
+            <PhoneCall size={18} fill="currentColor" />
           </div>
           {!collapsed && (
             <div className="logo-text">
@@ -124,7 +125,7 @@ const Sidebar = () => {
         .logo-icon {
           width: 32px;
           height: 32px;
-          background: var(--primary);
+          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
           border-radius: 8px;
           display: flex;
           align-items: center;
@@ -132,6 +133,7 @@ const Sidebar = () => {
           font-size: 1.2rem;
           color: white;
           flex-shrink: 0;
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
         }
 
         .logo-text h1 {
