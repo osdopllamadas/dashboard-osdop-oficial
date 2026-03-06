@@ -9,13 +9,12 @@ RUN npm run build
 # Production stage
 FROM node:18-alpine
 WORKDIR /app
-# Copy built frontend
+# Copiamos la web construida
 COPY --from=build /app/dist ./dist
-# Setup backend
-WORKDIR /app/server
+# Copiamos el servidor directamente a /app
 COPY server/package*.json ./
-RUN npm install
+RUN npm install --only=production
 COPY server/index.js ./
-# Environment variables can be injected at runtime
+# El servidor ahora estará en /app/index.js y la web en /app/dist
 EXPOSE 3000
 CMD ["node", "index.js"]

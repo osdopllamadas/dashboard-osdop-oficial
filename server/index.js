@@ -180,8 +180,8 @@ app.get('/api/dashboard-summary', async (req, res) => {
     res.json(data);
 });
 
-// Serve static files from React build
-const buildPath = path.resolve(__dirname, '../dist');
+// Serve static files from React build (Ahora en la misma carpeta en Docker)
+const buildPath = path.resolve(__dirname, 'dist');
 console.log(`[Server] Serving static files from: ${buildPath}`);
 app.use(express.static(buildPath));
 
