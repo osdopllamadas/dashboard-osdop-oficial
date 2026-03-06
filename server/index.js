@@ -11,14 +11,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Ajustado a 3000 por solicitud
+const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.VITE_ULTRAVOX_KEY || 'MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c';
 const BASE_URL = 'https://api.ultravox.ai/api';
 
 app.use(cors());
 app.use(express.json());
 
-// --- AGGREGATOR LOGIC (Integrated from server_aggregator.js) ---
+// --- AGGREGATOR LOGIC ---
 let globalCache = {
     callsData: { results: [] },
     usageData: {},
@@ -65,12 +65,20 @@ const normalizeData = (callsData, usageData, agentsData) => {
     const dailyUsage = usageData?.daily || [];
 
     const normalizedCalls = (callsData.results || []).map(call => {
-        let rawReason = call.endReason || 'unknown';
-        let reason = String(rawReason).toLowerCase();
-        const successKeywords = ['normal', 'ended', 'hangup', 'completed', 'success', 'hung'];
-        const isSuccess = successKeywords.some(k => reason.includes(k));
-        let finalReason = isSuccess ? 'completed' : reason;
+        // --- NORMALIZACIÓN DE ESTADO ---
+        let rawReason = call.endReason;
+        let finalReason = null;
 
+        if (rawReason) {
+            let reason = String(rawReason).toLowerCase();
+            const successKeywords = ['normal', 'ended', 'hangup', 'completed', 'success', 'hung'];
+            const isSuccess = successKeywords.some(k => reason.includes(k));
+            finalReason = isSuccess ? 'completed' : reason;
+        } else if (call.state === 'ended' || call.state === 'ended-no-recording') {
+            finalReason = 'unknown';
+        }
+
+        // --- NORMALIZACIÓN DE TELÉFONO ---
         let phone = 'Oculto';
         if (call.customerPhoneNumber) phone = call.customerPhoneNumber;
 
@@ -138,7 +146,6 @@ const triggerFullSync = async () => {
                 globalCache.callsData.results.forEach(c => map.set(c.callId, c));
                 data.results.forEach(c => map.set(c.callId, c));
                 globalCache.callsData.results = Array.from(map.values()).sort((a, b) => new Date(b.created) - new Date(a.created));
-                console.log(`[Aggregator] Sync progress: ${globalCache.callsData.results.length} calls`);
             }
             nextUrl = data.next || null;
             safetyCounter++;
@@ -175,31 +182,25 @@ const triggerRealTimePoll = async () => {
 
 // --- ENDPOINTS ---
 app.get('/api/dashboard-summary', async (req, res) => {
-    // Return data even if syncing
     const data = normalizeData(globalCache.callsData, globalCache.usageData, globalCache.agentsData);
     res.json(data);
 });
 
-// Serve static files from React build (Ahora en la misma carpeta en Docker)
 const buildPath = path.resolve(__dirname, 'dist');
-console.log(`[Server] Serving static files from: ${buildPath}`);
 app.use(express.static(buildPath));
 
 app.get('*', (req, res) => {
     const indexPath = path.join(buildPath, 'index.html');
     res.sendFile(indexPath, (err) => {
         if (err) {
-            console.error(`[Server] Error sending index.html from ${indexPath}:`, err);
-            res.status(404).send("Frontend build not found. Make sure 'npm run build' was successful.");
+            res.status(404).send("Frontend build not found.");
         }
     });
 });
 
-// Initialization
 app.listen(PORT, async () => {
     console.log(`[Server] Dashboard running on port ${PORT}`);
-    console.log('[Server] Initializing aggregator...');
     await triggerRealTimePoll();
-    triggerFullSync(); // Background
-    setInterval(triggerRealTimePoll, 10000);
+    triggerFullSync();
+    setInterval(triggerRealTimePoll, 5000);
 });

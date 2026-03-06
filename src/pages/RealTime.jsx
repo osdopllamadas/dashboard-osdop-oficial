@@ -20,6 +20,10 @@ import { useCalls } from '../context/CallContext';
 const RealTime = () => {
   const { allCalls, isFetchingGlobal, hasError, filters, setFilters } = useCalls();
 
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
   const filteredCalls = useMemo(() => {
     if (!allCalls) return [];
     return allCalls.filter(call => {
@@ -44,7 +48,11 @@ const RealTime = () => {
   }, [allCalls, filters]);
 
   const stats = useMemo(() => ultravoxService.getStats(filteredCalls), [filteredCalls]);
-  const liveCalls = useMemo(() => filteredCalls.filter(c => c.state === 'joined' && !c.endReason), [filteredCalls]);
+
+  const liveCalls = useMemo(() => {
+    return filteredCalls.filter(c => !c.endReason && c.state !== 'ended' && c.state !== 'ended-no-recording');
+  }, [filteredCalls]);
+
   const isLoadingInitial = isFetchingGlobal && allCalls.length === 0;
 
   const chartData = useMemo(() => {
@@ -58,15 +66,12 @@ const RealTime = () => {
     });
     return Object.values(daily).sort((a, b) => a.date.localeCompare(b.date)).map(d => ({
       ...d,
-      date: new Date(d.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }),
       minutes: parseFloat(d.minutes.toFixed(2))
     }));
   }, [filteredCalls]);
 
-  const handleFilterChange = (newFilters) => setFilters(newFilters);
-
   return (
-    <div className="page-container animate-fade-in">
+    <div className={`page-container animate-fade-in`}>
       <div className="header-row">
         <header className="page-header">
           <h1>Resumen <span className="text-secondary-gradient">Ejecutivo</span></h1>
@@ -112,15 +117,38 @@ const RealTime = () => {
             </div>
           </div>
 
+          {liveCalls.length > 0 && (
+            <div className="live-calls-container animate-fade-in mb-4">
+              <div className="section-header">
+                <Activity size={16} className="text-blue" />
+                <h4>Detalle de Llamadas Activas</h4>
+              </div>
+              <div className="live-calls-grid">
+                {liveCalls.map(call => (
+                  <div key={call.callId} className="live-call-card glass">
+                    <div className="live-call-info">
+                      <Phone size={14} className="text-blue" />
+                      <span className="phone-number">{call.customerPhoneNumber}</span>
+                    </div>
+                    <div className="live-call-meta">
+                      <span className="state-badge">{call.state}</span>
+                      <span className="time-badge">{new Date(call.created).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <FilterBar onFilterChange={handleFilterChange} resultsCount={filteredCalls.length} filters={filters} />
 
           <div className="stats-row">
-            <StatCard title="LLAMADAS TOTALES" value={stats.totalCalls} sub="Total acumulado" icon={<Phone />} color="blue" formula="Count(all)" />
-            <StatCard title="LLAMADAS FALLIDAS" value={stats.failedCalls} sub="Errores detectados" icon={<AlertCircle />} color="red" formula="EndState != normal" />
-            <StatCard title="MINUTOS FACTURADOS" value={stats.totalMinutes + 'm'} sub="Tiempo total" icon={<Activity />} color="purple" formula="Seconds / 60" />
-            <StatCard title="COSTO TOTAL" value={`$${stats.totalCost}`} sub="Tasa $0.065/min" icon={<DollarSign />} color="cyan" formula="Minutos * 0.065" />
-            <StatCard title="TASA ÉXITO" value={stats.successRate} sub="Rendimiento" icon={<CheckCircle />} color="green" formula="Success / Total" />
-            <StatCard title="DURACIÓN PROM." value={stats.avgDuration} sub="Por llamada" icon={<Clock />} color="orange" formula="TotalSec / Count" />
+            <StatCard title="LLAMADAS TOTALES" value={stats.totalCalls} icon={<Phone />} color="blue" formula="Count(all)" />
+            <StatCard title="LLAMADAS FALLIDAS" value={stats.failedCalls} icon={<AlertCircle />} color="red" formula="EndState != normal" />
+            <StatCard title="MINUTOS FACTURADOS" value={stats.totalMinutes + 'm'} icon={<Activity />} color="purple" formula="Seconds / 60" />
+            <StatCard title="COSTO TOTAL" value={`$${stats.totalCost}`} icon={<DollarSign />} color="cyan" formula="Minutos * 0.065" />
+            <StatCard title="TASA ÉXITO" value={stats.successRate} icon={<CheckCircle />} color="green" formula="Success / Total" />
+            <StatCard title="DURACIÓN PROM." value={stats.avgDuration} icon={<Clock />} color="orange" formula="TotalSec / Count" />
           </div>
 
           <div className="charts-container mt-4">
@@ -142,9 +170,9 @@ const RealTime = () => {
                     <RechartsXAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dy={10} />
                     <RechartsYAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                     <RechartsTooltip
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
                     />
-                    <RechartsArea type="monotone" dataKey="calls" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCallsReal)" strokeWidth={4} dot={{ r: 4, fill: "#3b82f6", strokeWidth: 2, stroke: "#0f172a" }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <RechartsArea type="monotone" dataKey="calls" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCallsReal)" strokeWidth={4} />
                   </RechartsAreaChart>
                 </RechartsResponsiveContainer>
               </div>
@@ -175,104 +203,6 @@ const RealTime = () => {
       )}
 
       <style jsx="true">{`
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-out forwards;
-        }
-
-        .content-fade-up {
-          animation: fadeUp 0.6s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .initial-loading-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 4rem;
-          background: rgba(255, 255, 255, 0.02);
-          border-radius: 12px;
-          border: 1px dashed rgba(255, 255, 255, 0.1);
-          margin: 2rem 0;
-        }
-
-        .spinner-large {
-          width: 40px;
-          height: 40px;
-          border: 3px solid rgba(139, 92, 246, 0.1);
-          border-top-color: #8b5cf6;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin-bottom: 1rem;
-        }
-
-        .header-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 2rem;
-        }
-
-        .text-primary-gradient {
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .header-actions {
-          display: flex;
-          gap: 12px;
-        }
-
-        .error-badge-light {
-          background: rgba(239, 68, 68, 0.1);
-          color: #f87171;
-          padding: 6px 16px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .spin-icon { animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(-360deg); } }
-        
-        .loading-badge {
-          background: rgba(59, 130, 246, 0.1);
-          color: #60a5fa;
-          padding: 6px 16px;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
-        }
-
-        .refresh-btn-glass {
-          background: #3b82f6;
-          color: white;
-          padding: 8px 20px;
-          border-radius: 20px;
-          font-size: 0.85rem;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-
         .active-calls-hero {
           width: 280px;
           padding: 1.5rem;
@@ -320,6 +250,75 @@ const RealTime = () => {
           font-weight: 700;
         }
 
+        .live-calls-container {
+          margin-bottom: 2rem;
+        }
+
+        .section-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 1rem;
+        }
+
+        .section-header h4 {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .live-calls-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 1rem;
+        }
+
+        .live-call-card {
+          padding: 1rem;
+          border-radius: 12px;
+          border-left: 3px solid var(--primary);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .live-call-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .phone-number {
+          font-weight: 600;
+          font-size: 0.9rem;
+          color: var(--text-primary);
+        }
+
+        .live-call-meta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+        }
+
+        .state-badge {
+          font-size: 0.65rem;
+          padding: 2px 8px;
+          border-radius: 10px;
+          background: rgba(16, 185, 129, 0.1);
+          color: #10b981;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .time-badge {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+        }
+
         .stats-row {
           display: grid;
           grid-template-columns: repeat(6, 1fr);
@@ -341,6 +340,8 @@ const RealTime = () => {
         .chart-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
         .chart-info p { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.5rem; }
 
+        .text-blue { color: #3b82f6; }
+        .mb-4 { margin-bottom: 2rem; }
         .mt-4 { margin-top: 2rem; }
 
         @media (max-width: 1400px) {
@@ -383,7 +384,6 @@ const StatCard = ({ title, value, sub, icon, color, formula }) => (
         background: rgba(255, 255, 255, 0.05);
         border-color: rgba(255, 255, 255, 0.1);
       }
-      
       .stat-header {
         display: flex;
         justify-content: space-between;
@@ -391,7 +391,6 @@ const StatCard = ({ title, value, sub, icon, color, formula }) => (
         width: 100%;
         margin-bottom: 1rem;
       }
-
       .stat-title-group h3 { 
         font-size: 0.75rem; 
         color: #94a3b8;
@@ -416,7 +415,6 @@ const StatCard = ({ title, value, sub, icon, color, formula }) => (
         color: #64748b;
         margin-top: 4px;
       }
-      
       .stat-icon {
         padding: 8px;
         border-radius: 10px;
@@ -425,7 +423,6 @@ const StatCard = ({ title, value, sub, icon, color, formula }) => (
         justify-content: center;
         background: rgba(255, 255, 255, 0.03);
       }
-
       .stat-card.blue { border-top: 3px solid #3b82f6; }
       .stat-card.blue .stat-icon { color: #3b82f6; }
       .stat-card.red { border-top: 3px solid #ef4444; }

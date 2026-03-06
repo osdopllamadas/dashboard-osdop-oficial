@@ -1,4 +1,3 @@
-// El API Key debería venir de variables de entorno en producción (ej. process.env.VITE_ULTRAVOX_KEY)
 const API_KEY = process.env.VITE_ULTRAVOX_KEY || 'MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c';
 const BASE_URL = 'https://api.ultravox.ai/api';
 
@@ -51,22 +50,22 @@ const normalizeData = (callsData, usageData, agentsData) => {
 
     const normalizedCalls = (callsData.results || []).map(call => {
         // --- NORMALIZACIÓN DE ESTADO ---
-        let rawReason = call.endReason || 'unknown';
-        let reason = String(rawReason).toLowerCase();
+        let rawReason = call.endReason;
+        let finalReason = null;
 
-        const successKeywords = ['normal', 'ended', 'hangup', 'completed', 'success', 'hung'];
-        const isSuccess = successKeywords.some(k => reason.includes(k));
+        if (rawReason) {
+            let reason = String(rawReason).toLowerCase();
+            const successKeywords = ['normal', 'ended', 'hangup', 'completed', 'success', 'hung'];
+            const isSuccess = successKeywords.some(k => reason.includes(k));
+            finalReason = isSuccess ? 'completed' : reason;
+        } else if (call.state === 'ended' || call.state === 'ended-no-recording') {
+            finalReason = 'unknown';
+        }
 
-        // El frontend espera: 'normal', 'agent_ended', 'hangup', 'completed' para contarlos como éxito
-        let finalReason = isSuccess ? 'completed' : reason;
-
-        // --- NORMALIZACIÓN DE TELÉFONO (Extracción Profunda) ---
+        // --- NORMALIZACIÓN DE TELÉFONO ---
         let phone = 'Oculto';
-
-        // 1. Campo directo
         if (call.customerPhoneNumber) phone = call.customerPhoneNumber;
 
-        // 2. Metadata (Intentar parsear si es string, o usar si es objeto)
         let meta = call.metadata || {};
         if (typeof meta === 'string') {
             try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
@@ -80,12 +79,10 @@ const normalizeData = (callsData, usageData, agentsData) => {
                 'Oculto';
         }
 
-        // 3. RequestContext SIP
         if (phone === 'Oculto' && call.requestContext?.ultravox?.sip?.caller_id) {
             phone = call.requestContext.ultravox.sip.caller_id;
         }
 
-        // 4. SIP Header Parsing (Fallo seguro)
         if (phone === 'Oculto' && meta['ultravox.sip.from_uri']) {
             const match = meta['ultravox.sip.from_uri'].match(/sip:([^@]+)@/);
             if (match) phone = match[1];
@@ -135,7 +132,7 @@ const triggerFullSync = async () => {
             }
             nextUrl = data.next || null;
             safetyCounter++;
-            await sleep(1000); // Evitar saturación
+            await sleep(1000);
         }
     } catch (err) {
         console.error('[Aggregator] Full Sync Error:', err);
@@ -169,19 +166,13 @@ export const dashboardAggregator = async () => {
     if (!isAggregatorRunning) {
         isAggregatorRunning = true;
         triggerRealTimePoll().then(() => triggerFullSync());
-        setInterval(triggerRealTimePoll, 10000);
+        setInterval(triggerRealTimePoll, 5000);
     }
 
     let waitCounter = 0;
     while (!globalCache.isInitialLoaded && waitCounter < 10) {
         await sleep(500);
         waitCounter++;
-    }
-
-    // DEBUG LOG
-    if (globalCache.callsData.results.length > 0) {
-        const first = globalCache.callsData.results[0];
-        console.log(`[Aggregator Debug] ID: ${first.callId} | Original Reason: ${first.endReason} | Phone: ${normalizeData({ results: [first] }, {}, {}).calls[0].customerPhoneNumber}`);
     }
 
     return normalizeData(globalCache.callsData, globalCache.usageData, globalCache.agentsData);

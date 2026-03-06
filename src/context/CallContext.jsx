@@ -41,7 +41,8 @@ export const CallProvider = ({ children }) => {
 
     useEffect(() => {
         refreshData();
-        const interval = setInterval(refreshData, 10000); // 10s is enough for background sync
+        const interval = setInterval(refreshData, 5000);
+        // 10s is enough for background sync
         return () => clearInterval(interval);
     }, []);
 
