@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 80; // Standard for Docker
+const PORT = process.env.PORT || 3000; // Ajustado a 3000 por solicitud
 const API_KEY = process.env.VITE_ULTRAVOX_KEY || 'MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c';
 const BASE_URL = 'https://api.ultravox.ai/api';
 

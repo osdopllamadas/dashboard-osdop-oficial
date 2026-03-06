@@ -17,5 +17,5 @@ COPY server/package*.json ./
 RUN npm install
 COPY server/index.js ./
 # Environment variables can be injected at runtime
-EXPOSE 80
+EXPOSE 3000
 CMD ["node", "index.js"]
