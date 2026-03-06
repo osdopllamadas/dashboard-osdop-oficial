@@ -7,12 +7,22 @@ services:
     environment:
       VITE_ULTRAVOX_KEY: "MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c"
       PORT: "3000"
+    networks:
+      - traefik-public
     deploy:
       restart_policy:
         condition: on-failure
       labels:
         - "traefik.enable=true"
+        - "traefik.docker.network=traefik-public"
         - "traefik.http.routers.osdop.rule=Host(`dashboard.mateoia.store`)"
-        - "traefik.http.routers.osdop.entrypoints=websecure"
-        - "traefik.http.routers.osdop.tls=true"
+        - "traefik.http.routers.osdop.entrypoints=web"
+        - "traefik.http.routers.osdop-secure.rule=Host(`dashboard.mateoia.store`)"
+        - "traefik.http.routers.osdop-secure.entrypoints=websecure"
+        - "traefik.http.routers.osdop-secure.tls=true"
+        - "traefik.http.routers.osdop-secure.tls.certresolver=letsencrypt"
         - "traefik.http.services.osdop.loadbalancer.server.port=3000"
+
+networks:
+  traefik-public:
+    external: true
