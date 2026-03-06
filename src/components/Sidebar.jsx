@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   History,
   BarChart2,
+  BarChart3,
   Activity,
   Clock,
   Brain,
@@ -37,7 +38,9 @@ const Sidebar = () => {
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
         <div className="logo-container">
-          <div className="logo-icon">⚡</div>
+          <div className="logo-icon">
+            <BarChart3 size={20} />
+          </div>
           {!collapsed && (
             <div className="logo-text">
               <h1>RENTON CALL APP</h1>
