@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ultravoxService } from '../services/ultravox';
 import {
-  Phone, CheckCircle, AlertCircle, Clock, Activity, DollarSign, RefreshCcw
+  Phone, CheckCircle, AlertCircle, Clock, Activity, DollarSign, RefreshCcw, TrendingUp
 } from 'lucide-react';
 import {
   BarChart as RechartsBarChart,
@@ -12,7 +12,10 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer as RechartsResponsiveContainer,
   AreaChart as RechartsAreaChart,
-  Area as RechartsArea
+  Area as RechartsArea,
+  PieChart as RechartsPieChart,
+  Pie as RechartsPie,
+  Cell as RechartsCell
 } from 'recharts';
 import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
@@ -145,8 +148,7 @@ const RealTime = () => {
           <div className="stats-row">
             <StatCard title="LLAMADAS TOTALES" value={stats.totalCalls} icon={<Phone />} color="blue" formula="Count(all)" />
             <StatCard title="LLAMADAS FALLIDAS" value={stats.failedCalls} icon={<AlertCircle />} color="red" formula="EndState != normal" />
-            <StatCard title="MINUTOS FACTURADOS" value={stats.totalMinutes + 'm'} icon={<Activity />} color="purple" formula="Seconds / 60" />
-            <StatCard title="COSTO TOTAL" value={`$${stats.totalCost}`} icon={<DollarSign />} color="cyan" formula="Minutos * 0.065" />
+            <StatCard title="TRANSFERENCIAS" value={stats.totalTransfers} icon={<TrendingUp />} color="purple" formula="Agent Transfers" />
             <StatCard title="TASA ÉXITO" value={stats.successRate} icon={<CheckCircle />} color="green" formula="Success / Total" />
             <StatCard title="DURACIÓN PROM." value={stats.avgDuration} icon={<Clock />} color="orange" formula="TotalSec / Count" />
           </div>
@@ -171,6 +173,8 @@ const RealTime = () => {
                     <RechartsYAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                     <RechartsTooltip
                       contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                      labelStyle={{ color: '#fff' }}
                     />
                     <RechartsArea type="monotone" dataKey="calls" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCallsReal)" strokeWidth={4} />
                   </RechartsAreaChart>
@@ -180,22 +184,85 @@ const RealTime = () => {
 
             <div className="chart-card glass">
               <div className="chart-info">
-                <h3>Minutos Facturados por Día</h3>
-                <p>Consumo de tiempo facturado diariamente</p>
+                <h3>Transferencias Diarias</h3>
+                <p>Volumen de transferencias a lo largo del tiempo</p>
               </div>
               <div className="chart-view">
                 <RechartsResponsiveContainer width="100%" height={280}>
-                  <RechartsBarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <RechartsAreaChart data={stats.dailyTransfers} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTransfers" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
                     <RechartsCartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <RechartsXAxis dataKey="date" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} dy={10} />
                     <RechartsYAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                     <RechartsTooltip
-                      cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                       contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                      labelStyle={{ color: '#fff' }}
                     />
-                    <RechartsBar dataKey="minutes" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={40} />
-                  </RechartsBarChart>
+                    <RechartsArea type="monotone" dataKey="count" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorTransfers)" strokeWidth={4} />
+                  </RechartsAreaChart>
                 </RechartsResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="chart-card glass">
+              <div className="chart-info">
+                <h3>Rendimiento de Transferencias</h3>
+                <p>Efectivas vs Fallidas (Estado final)</p>
+              </div>
+              <div className="chart-view" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>
+                <RechartsResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <defs>
+                      <linearGradient id="gradEffective" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#3b82f6" />
+                      </linearGradient>
+                      <linearGradient id="gradFailed" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" />
+                        <stop offset="100%" stopColor="#f59e0b" />
+                      </linearGradient>
+                    </defs>
+                    <RechartsPie
+                      data={[
+                        { name: 'Efectivas', value: stats.effectiveTransfers },
+                        { name: 'Fallidas', value: stats.failedTransfers }
+                      ]}
+                      innerRadius={70}
+                      outerRadius={100}
+                      paddingAngle={5}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      <RechartsCell key="cell-effective" fill="url(#gradEffective)" />
+                      <RechartsCell key="cell-failed" fill="url(#gradFailed)" />
+                    </RechartsPie>
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff' }}
+                      labelStyle={{ color: '#fff' }}
+                    />
+                  </RechartsPieChart>
+                </RechartsResponsiveContainer>
+                <div style={{ position: 'absolute', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Total</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.totalTransfers}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}></div>
+                  Efectivas: {stats.effectiveTransfers}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'linear-gradient(135deg, #ef4444, #f59e0b)' }}></div>
+                  Fallidas: {stats.failedTransfers}
+                </div>
               </div>
             </div>
           </div>
@@ -204,7 +271,7 @@ const RealTime = () => {
 
       <style jsx="true">{`
         .active-calls-hero {
-          width: 280px;
+          width: 320px;
           padding: 1.5rem;
           border-radius: var(--radius-lg);
           margin-bottom: 2rem;
@@ -214,35 +281,43 @@ const RealTime = () => {
           align-items: center;
         }
 
+        .hero-content {
+          display: flex;
+          align-items: center;
+          gap: 1.5rem; /* Separación del punto de las letras */
+        }
+
         .hero-text h3 { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px; }
         .hero-text p { font-size: 0.7rem; color: var(--text-muted); }
 
         .pulse-container {
           position: relative;
-          width: 12px;
-          height: 12px;
-          margin-right: 12px;
+          width: 14px;
+          height: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .pulse-dot {
-          width: 100%;
-          height: 100%;
+          width: 10px;
+          height: 10px;
           background: #3b82f6;
           border-radius: 50%;
         }
 
         .pulse-ring {
           position: absolute;
-          width: 100%;
-          height: 100%;
+          width: 24px;
+          height: 24px;
           border: 2px solid #3b82f6;
           border-radius: 50%;
           animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-          0% { transform: scale(1); opacity: 1; }
-          100% { transform: scale(2.5); opacity: 0; }
+          0% { transform: scale(0.5); opacity: 1; }
+          100% { transform: scale(1.5); opacity: 0; }
         }
 
         .hero-value {
@@ -319,9 +394,55 @@ const RealTime = () => {
           color: var(--text-muted);
         }
 
+        .header-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 2rem;
+          width: 100%;
+        }
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .refresh-btn-glass {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: white; /* Letras en blanco */
+          font-size: 0.85rem;
+          font-weight: 500;
+          transition: all 0.3s ease;
+        }
+
+        .refresh-btn-glass:hover {
+          background: rgba(255, 255, 255, 0.1);
+          transform: translateY(-2px);
+        }
+
+        .loading-badge {
+          background: rgba(59, 130, 246, 0.1);
+          color: #60a5fa;
+          padding: 6px 16px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+        }
+
         .stats-row {
           display: grid;
-          grid-template-columns: repeat(6, 1fr);
+          grid-template-columns: repeat(5, 1fr);
           gap: 1rem;
         }
 
@@ -335,6 +456,7 @@ const RealTime = () => {
         .chart-card {
           padding: 1.5rem;
           border-radius: var(--radius-lg);
+          position: relative;
         }
 
         .chart-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }

@@ -113,7 +113,8 @@ const normalizeData = (callsData, usageData, agentsData) => {
             created: call.created,
             summary: call.summary,
             customerPhoneNumber: phone,
-            recordingUrl: call.recordingUrl
+            recordingUrl: call.recordingUrl,
+            transcript: call.transcript
         };
     });
 

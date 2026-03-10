@@ -51,13 +51,53 @@ export const ultravoxService = {
         const totalMinutes = calls.reduce((acc, call) => acc + (parseFloat(call.billedDuration || 0) / 60), 0);
         const totalCost = totalMinutes * COST_PER_MINUTE;
 
+        const transferCalls = calls.filter(call => {
+            const hasTool = (call.transcript || '').toLowerCase().includes('transferirllamada');
+            const hasKeyword = ((call.summary || '') + (call.endReason || '')).toLowerCase().includes('transfer');
+            return hasTool || hasKeyword;
+        });
+
+        const effectiveTransfers = transferCalls.filter(c => {
+            const transcript = (c.transcript || '');
+            const summary = (c.summary || '').toLowerCase();
+
+            // Éxito explícito por el JSON de la herramienta
+            const hasSuccessInTranscript = transcript.includes('{"status":"success","message":"Transfer initiated successfully."}');
+
+            // Fallo explícito por palabra "error" en el contexto de transferencia (sumario o transcript)
+            const hasErrorInSummary = summary.includes('error') && (summary.includes('transfer') || summary.includes('herramienta'));
+            const hasErrorInTranscript = transcript.toLowerCase().includes('error') && transcript.toLowerCase().includes('transferirllamada');
+
+            // Si hay un éxito explícito, es efectiva. 
+            // Si no, verificamos estados de fallo.
+            if (hasSuccessInTranscript) return true;
+            if (hasErrorInSummary || hasErrorInTranscript) return false;
+
+            // Fallback: si no hay transcript detallado, usamos el estado técnico
+            return ['normal', 'agent_ended', 'completed', 'hangup'].includes(c.endReason);
+        }).length;
+
+        const failedTransfers = transferCalls.length - effectiveTransfers;
+
+        // Daily transfers for chart
+        const dailyTransfers = {};
+        transferCalls.forEach(call => {
+            const date = call.created.split('T')[0];
+            if (!dailyTransfers[date]) dailyTransfers[date] = { date, count: 0 };
+            dailyTransfers[date].count += 1;
+        });
+
         return {
             totalCalls,
             totalMinutes: totalMinutes.toFixed(2),
             totalCost: totalCost.toFixed(2),
             successRate: totalCalls > 0 ? Math.round((calls.filter(c => ['normal', 'agent_ended', 'completed', 'hangup'].includes(c.endReason)).length / totalCalls) * 100) + '%' : '0%',
             failedCalls: calls.filter(c => !['normal', 'agent_ended', 'completed', 'hangup'].includes(c.endReason)).length,
-            avgDuration: totalCalls > 0 ? Math.round((totalMinutes * 60) / totalCalls) + 's' : '0s'
+            avgDuration: totalCalls > 0 ? Math.round((totalMinutes * 60) / totalCalls) + 's' : '0s',
+            totalTransfers: transferCalls.length,
+            effectiveTransfers,
+            failedTransfers,
+            dailyTransfers: Object.values(dailyTransfers).sort((a, b) => a.date.localeCompare(b.date))
         };
     }
 };

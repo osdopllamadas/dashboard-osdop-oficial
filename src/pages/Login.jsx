@@ -4,73 +4,75 @@ import { useAuth } from '../context/AuthContext';
 import { Lock, User, AlertCircle } from 'lucide-react';
 
 const Login = () => {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const { login } = useAuth();
-    const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (login(username, password)) {
-            navigate('/');
-        } else {
-            setError('Credenciales incorrectas');
-        }
-    };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (login(username, password)) {
+      navigate('/');
+    } else {
+      setError('Credenciales incorrectas');
+    }
+  };
 
-    return (
-        <div className="login-container">
-            <div className="login-card glass">
-                <div className="login-header">
-                    <div className="logo-icon">⚡</div>
-                    <h1>Bienvenido a DashCall</h1>
-                    <p>Ingresa tus credenciales para continuar</p>
-                </div>
+  return (
+    <div className="login-container">
+      <div className="login-card glass">
+        <div className="login-header">
+          <div className="logo-container-login">
+            <img src="/renton-logo.png.png" alt="Renton Connective" className="renton-logo-img" />
+          </div>
+          <h1>Bienvenido</h1>
+          <p>Ingresa tus credenciales para continuar</p>
+        </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="input-group">
-                        <label>Usuario</label>
-                        <div className="input-wrapper">
-                            <User size={18} />
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Nombre de usuario"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="input-group">
-                        <label>Contraseña</label>
-                        <div className="input-wrapper">
-                            <Lock size={18} />
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {error && (
-                        <div className="error-message">
-                            <AlertCircle size={16} />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <button type="submit" className="login-btn">
-                        Iniciar Sesión
-                    </button>
-                </form>
+        <form onSubmit={handleSubmit}>
+          <div className="input-group">
+            <label>Usuario</label>
+            <div className="input-wrapper">
+              <User size={18} />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Nombre de usuario"
+                required
+              />
             </div>
+          </div>
 
-            <style jsx="true">{`
+          <div className="input-group">
+            <label>Contraseña</label>
+            <div className="input-wrapper">
+              <Lock size={18} />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-message">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button type="submit" className="login-btn">
+            Iniciar Sesión
+          </button>
+        </form>
+      </div>
+
+      <style jsx="true">{`
         .login-container {
           display: flex;
           align-items: center;
@@ -95,11 +97,30 @@ const Login = () => {
         .login-header h1 {
           font-size: 1.5rem;
           margin-top: 1rem;
+          color: white;
+        }
+
+        .logo-container-login {
+          width: 100%;
+          height: 120px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .renton-logo-img {
+          width: 500px; /* Tamaño mucho más grande para ver el logo real */
+          height: auto;
+          margin-top: 10px; /* Ajuste fino vertical */
+          filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.15));
         }
 
         .login-header p {
           color: var(--text-muted);
-          font-size: 0.9rem;
+          font-size: 0.85rem;
+          margin-top: 0.4rem;
         }
 
         .input-group {
@@ -163,8 +184,8 @@ const Login = () => {
           margin-bottom: 1rem;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 };
 
 export default Login;
