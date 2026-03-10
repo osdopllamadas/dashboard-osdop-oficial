@@ -22,10 +22,34 @@ const Minutes = () => {
         if (filters.status === 'Fallida' && ok) return false;
       }
       if (filters.phone && !call.customerPhoneNumber?.includes(filters.phone)) return false;
+
       const dur = typeof (call.billedDurationSeconds || call.billedDuration) === 'string'
         ? parseFloat(call.billedDurationSeconds || call.billedDuration)
         : (call.billedDurationSeconds || call.billedDuration || 0);
+
       if (filters.minSec && dur < filters.minSec) return false;
+
+      // Filtro de Transferencia
+      if (filters.transferStatus && filters.transferStatus !== 'Todos') {
+        const transcript = (call.transcript || '');
+        const summary = (call.summary || '').toLowerCase();
+        const hasTool = transcript.toLowerCase().includes('transferirllamada');
+        const hasKeyword = ((call.summary || '') + (call.endReason || '')).toLowerCase().includes('transfer');
+        const isAttempted = hasTool || hasKeyword;
+
+        if (filters.transferStatus === 'Intentadas' && !isAttempted) return false;
+
+        const hasSuccessInTranscript = transcript.includes('{"status":"success","message":"Transfer initiated successfully."}');
+        const hasErrorInSummary = summary.includes('error') && (summary.includes('transfer') || summary.includes('herramienta'));
+        const hasErrorInTranscript = transcript.toLowerCase().includes('error') && transcript.toLowerCase().includes('transferirllamada');
+
+        const isFailed = isAttempted && (hasErrorInSummary || hasErrorInTranscript);
+        const isSuccessful = hasSuccessInTranscript || (isAttempted && !isFailed && ['normal', 'agent_ended', 'completed', 'hangup'].includes(call.endReason));
+
+        if (filters.transferStatus === 'Exitosas' && !isSuccessful) return false;
+        if (filters.transferStatus === 'Erróneas' && !isFailed) return false;
+      }
+
       return true;
     });
   }, [allCalls, filters]);
@@ -111,6 +135,7 @@ const Minutes = () => {
                   <th>Teléfono</th>
                   <th>Fecha</th>
                   <th>Duración</th>
+                  <th>Transferencia</th>
                   <th>Minutos Fact.</th>
                   <th>Costo Proyectado</th>
                 </tr>
@@ -129,6 +154,28 @@ const Minutes = () => {
                       </td>
                       <td>{new Date(call.created).toLocaleDateString()}</td>
                       <td>{durSeconds}s</td>
+                      <td>
+                        {(() => {
+                          const transcript = (call.transcript || '');
+                          const summary = (call.summary || '').toLowerCase();
+                          const hasTool = transcript.toLowerCase().includes('transferirllamada');
+                          const hasKeyword = ((call.summary || '') + (call.endReason || '')).toLowerCase().includes('transfer');
+                          const isAttempted = hasTool || hasKeyword;
+
+                          if (!isAttempted) return <span className="badge-none">--</span>;
+
+                          const hasSuccessInTranscript = transcript.includes('{"status":"success","message":"Transfer initiated successfully."}');
+                          const hasErrorInSummary = summary.includes('error') && (summary.includes('transfer') || summary.includes('herramienta'));
+                          const hasErrorInTranscript = transcript.toLowerCase().includes('error') && transcript.toLowerCase().includes('transferirllamada');
+
+                          const isFailed = isAttempted && (hasErrorInSummary || hasErrorInTranscript);
+                          const isSuccessful = hasSuccessInTranscript || (isAttempted && !isFailed && ['normal', 'agent_ended', 'completed', 'hangup'].includes(call.endReason));
+
+                          if (isSuccessful) return <span className="badge-transfer success">Exitosa</span>;
+                          if (isFailed) return <span className="badge-transfer error">Fallida</span>;
+                          return <span className="badge-transfer warning">Intentada</span>;
+                        })()}
+                      </td>
                       <td className="fact-min">{durMinutes.toFixed(2)}m</td>
                       <td className="cost-cell text-success">${cost.toFixed(3)}</td>
                     </tr>
@@ -248,6 +295,19 @@ const Minutes = () => {
         .fact-min { color: var(--text-secondary); }
         .cost-cell { font-weight: 700; }
         .text-success { color: #10b981; }
+
+        .badge-transfer {
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+        }
+
+        .badge-transfer.success { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-transfer.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .badge-transfer.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .badge-none { color: var(--text-muted); font-size: 0.8rem; }
 
         .mb-4 { margin-bottom: 2rem; }
       `}</style>

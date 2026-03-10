@@ -8,7 +8,8 @@ const FilterBar = ({ onFilterChange, resultsCount = 0, filters }) => {
     to: filters?.to || '',
     phone: filters?.phone || '',
     minSec: filters?.minSec || 0,
-    status: filters?.status || 'Todos'
+    status: filters?.status || 'Todos',
+    transferStatus: filters?.transferStatus || 'Todos'
   });
 
   const presets = ['Hoy', 'Ayer', 'Últimos 7 días', 'Últimos 30 días', 'Este mes', 'Este año', 'Todos'];
@@ -61,7 +62,8 @@ const FilterBar = ({ onFilterChange, resultsCount = 0, filters }) => {
       to: '',
       phone: '',
       minSec: 0,
-      status: 'Todos'
+      status: 'Todos',
+      transferStatus: 'Todos'
     };
     setLocalFilters(cleared);
     onFilterChange(cleared);
@@ -146,6 +148,19 @@ const FilterBar = ({ onFilterChange, resultsCount = 0, filters }) => {
             <option value="Todos">Estado</option>
             <option value="Completada">Completada</option>
             <option value="Fallida">Fallida</option>
+          </select>
+          <ChevronDown size={14} className="select-arrow" />
+        </div>
+
+        <div className="input-field status-select">
+          <select
+            value={localFilters.transferStatus}
+            onChange={(e) => updateLocal('transferStatus', e.target.value)}
+          >
+            <option value="Todos">Transferencia</option>
+            <option value="Exitosas">Exitosas</option>
+            <option value="Intentadas">Intentadas</option>
+            <option value="Erróneas">Erróneas</option>
           </select>
           <ChevronDown size={14} className="select-arrow" />
         </div>
