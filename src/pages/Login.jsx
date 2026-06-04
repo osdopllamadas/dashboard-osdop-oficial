@@ -7,15 +7,20 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (login(username, password)) {
+    setError('');
+    setIsSubmitting(true);
+    const success = await login(username, password);
+    setIsSubmitting(false);
+    if (success) {
       navigate('/');
     } else {
-      setError('Credenciales incorrectas');
+      setError('Credenciales incorrectas. Verifica tu usuario y contraseña.');
     }
   };
 
@@ -66,8 +71,8 @@ const Login = () => {
             </div>
           )}
 
-          <button type="submit" className="login-btn">
-            Iniciar Sesión
+          <button type="submit" className="login-btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Verificando...' : 'Iniciar Sesión'}
           </button>
         </form>
       </div>

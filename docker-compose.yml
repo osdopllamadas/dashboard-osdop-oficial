@@ -5,21 +5,22 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_ULTRAVOX_KEY: "MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c"
+      ULTRAVOX_API_KEY: "${ULTRAVOX_API_KEY}"
       PORT: "3000"
     networks:
-      - BelanzeNet
+      - mateo
     deploy:
       restart_policy:
         condition: on-failure
       labels:
         - "traefik.enable=true"
-        - "traefik.docker.network=BelanzeNet"
+        - "traefik.docker.network=mateo"
         - "traefik.http.routers.osdop.rule=Host(`dashboard.mateoia.store`)"
         - "traefik.http.routers.osdop.entrypoints=websecure"
         - "traefik.http.routers.osdop.tls=true"
+        - "traefik.http.routers.osdop.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.osdop.loadbalancer.server.port=3000"
 
 networks:
-  BelanzeNet:
+  mateo:
     external: true

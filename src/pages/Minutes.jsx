@@ -154,7 +154,7 @@ const Minutes = () => {
                       </td>
                       <td>{new Date(call.created).toLocaleDateString()}</td>
                       <td>{durSeconds}s</td>
-                      <td>
+                      <td className="transfer-cell-min">
                         {(() => {
                           const transcript = (call.transcript || '');
                           const summary = (call.summary || '').toLowerCase();
@@ -167,8 +167,9 @@ const Minutes = () => {
                           const hasSuccessInTranscript = transcript.includes('{"status":"success","message":"Transfer initiated successfully."}');
                           const hasErrorInSummary = summary.includes('error') && (summary.includes('transfer') || summary.includes('herramienta'));
                           const hasErrorInTranscript = transcript.toLowerCase().includes('error') && transcript.toLowerCase().includes('transferirllamada');
+                          const hasSpecificError = transcript.includes('ultravox_call_id is invalid') || transcript.includes('"status":"error"');
 
-                          const isFailed = isAttempted && (hasErrorInSummary || hasErrorInTranscript);
+                          const isFailed = isAttempted && (hasErrorInSummary || hasErrorInTranscript || hasSpecificError);
                           const isSuccessful = hasSuccessInTranscript || (isAttempted && !isFailed && ['normal', 'agent_ended', 'completed', 'hangup'].includes(call.endReason));
 
                           if (isSuccessful) return <span className="badge-transfer success">Exitosa</span>;
@@ -308,6 +309,111 @@ const Minutes = () => {
         .badge-transfer.error { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
         .badge-transfer.warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
         .badge-none { color: var(--text-muted); font-size: 0.8rem; }
+
+        .detail-playback-cell {
+          width: 320px;
+          min-width: 300px;
+        }
+
+        .call-reason-preview {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          margin-bottom: 0.75rem;
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .no-recording {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-style: italic;
+        }
+
+        .audio-player-container {
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          border-radius: 8px;
+          padding: 8px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .audio-controls {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .audio-btn {
+          background: none;
+          border: none;
+          color: var(--primary);
+          cursor: pointer;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.2s;
+        }
+
+        .audio-btn:hover {
+          transform: scale(1.1);
+          color: white;
+        }
+
+        .audio-slider {
+          flex: 1;
+          height: 4px;
+          -webkit-appearance: none;
+          background: #1e293b;
+          border-radius: 2px;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .audio-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 12px;
+          height: 12px;
+          background: var(--primary);
+          border-radius: 50%;
+          cursor: pointer;
+          box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+        }
+
+        .audio-time {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          font-family: monospace;
+          min-width: 70px;
+          text-align: right;
+        }
+
+        .audio-actions-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .skip-btn {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          font-size: 0.65rem;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .skip-btn:hover {
+          color: var(--primary);
+        }
 
         .mb-4 { margin-bottom: 2rem; }
       `}</style>

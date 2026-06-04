@@ -34,6 +34,8 @@ export const CallProvider = ({ children }) => {
         } catch (err) {
             console.error('[CallContext] Polling Error:', err);
             setError(err.message);
+            // Ensure we stop loading even on first-time error so UI doesn't hang
+            setLoading(false);
         } finally {
             isFetchingRef.current = false;
         }
@@ -41,8 +43,8 @@ export const CallProvider = ({ children }) => {
 
     useEffect(() => {
         refreshData();
-        const interval = setInterval(refreshData, 5000);
-        // 10s is enough for background sync
+        const interval = setInterval(refreshData, 30000);
+        // Backend syncs every 12s — 30s on client is sufficient and respects Rate Limiter
         return () => clearInterval(interval);
     }, []);
 

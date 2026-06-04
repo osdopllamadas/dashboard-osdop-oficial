@@ -21,7 +21,7 @@ import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
 
 const RealTime = () => {
-  const { allCalls, isFetchingGlobal, hasError, filters, setFilters } = useCalls();
+  const { allCalls, isFetchingGlobal, error, filters, setFilters } = useCalls();
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -86,9 +86,9 @@ const RealTime = () => {
               <RefreshCcw size={14} className="spin-icon" /> Sincronizando...
             </div>
           )}
-          {hasError && (
+          {!!error && (
             <div className="error-badge-light">
-              <AlertCircle size={14} /> Error al cargar datos
+              <AlertCircle size={14} /> Error: {error}
             </div>
           )}
           <button className="refresh-btn-glass" onClick={() => window.location.reload()}>

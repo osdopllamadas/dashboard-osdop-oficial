@@ -8,6 +8,8 @@ import Minutes from './pages/Minutes';
 import Historial from './pages/Historial';
 import AIAnalyst from './pages/AIAnalyst';
 import LiveActivity from './pages/LiveActivity';
+import UsersManagement from './pages/UsersManagement';
+import AffiliatesCRM from './pages/AffiliatesCRM';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CallProvider } from './context/CallContext';
 import './index.css';
@@ -39,11 +41,24 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const ProtectedRoute = ({ children, adminOnly = false }) => {
-  const { user } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, authLoading } = useAuth();
+
+  // While validating the stored token server-side, show a neutral loading screen
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#080b1a' }}>
+        <div style={{ textAlign: 'center', color: '#60a5fa' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid rgba(96,165,250,0.2)', borderTop: '3px solid #60a5fa', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }}></div>
+          <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Verificando sesión...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   if (!user) return <Navigate to="/login" />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/" />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" />;
 
   return children;
 };
@@ -97,14 +112,26 @@ function App() {
               } />
 
               <Route path="/minutos" element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
                   <AppLayout><Minutes /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/analista-ia" element={
-                <ProtectedRoute adminOnly={true}>
+                <ProtectedRoute allowedRoles={['admin']}>
                   <AppLayout><AIAnalyst /></AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/afiliados" element={
+                <ProtectedRoute>
+                  <AppLayout><AffiliatesCRM /></AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/usuarios" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AppLayout><UsersManagement /></AppLayout>
                 </ProtectedRoute>
               } />
 

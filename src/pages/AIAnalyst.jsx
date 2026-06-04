@@ -5,6 +5,22 @@ const AIAnalyst = () => {
     const [apiKey, setApiKey] = useState('');
     const [selectedModel, setSelectedModel] = useState('gpt-4o');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analyzed, setAnalyzed] = useState(false);
+
+    // Fix: button was permanently stuck in "Procesando..." — reset after simulated delay
+    const handleAnalyze = () => {
+        if (!apiKey.trim()) {
+            alert('Ingresa una API Key antes de ejecutar el análisis.');
+            return;
+        }
+        setIsAnalyzing(true);
+        setAnalyzed(false);
+        // TODO: Replace with real AI API call (OpenAI/Gemini) using apiKey + call transcripts from backend
+        setTimeout(() => {
+            setIsAnalyzing(false);
+            setAnalyzed(true);
+        }, 2500);
+    };
 
     const mockAnalyses = [
         {
@@ -90,13 +106,28 @@ const AIAnalyst = () => {
                         <Zap size={24} className="text-warning-glow" />
                         <h2>Sugerencias de Optimización Automática</h2>
                     </div>
-                    <button className={`btn-analyze ${isAnalyzing ? 'loading' : ''}`} onClick={() => setIsAnalyzing(true)}>
-                        {isAnalyzing ? 'Procesando API...' : 'Ejecutar Análisis Completo'}
+                                    <button className={`btn-analyze ${isAnalyzing ? 'loading' : ''}`} onClick={handleAnalyze} disabled={isAnalyzing}>
+                        {isAnalyzing ? (
+                            <><span style={{display:'inline-block', animation:'spin 0.8s linear infinite', marginRight: '8px'}}>⏳</span> Procesando...
+                            </>
+                        ) : 'Ejecutar Análisis Completo'}
                     </button>
                 </div>
 
-                <div className="optimization-list">
-                    {mockAnalyses.map(item => (
+                                <div className="optimization-list">
+                    {!analyzed && !isAnalyzing && (
+                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
+                            <Brain size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                            <p style={{ fontSize: '0.9rem' }}>Ingresa tu API Key y ejecuta el análisis para ver los resultados.</p>
+                            <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#475569' }}>Se analizarán las transcripciones de las llamadas del historial mediante el modelo seleccionado.</p>
+                        </div>
+                    )}
+                    {analyzed && (
+                        <>
+                        <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '0.75rem 1.25rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#f59e0b' }}>
+                            ⚠️ Resultados de ejemplo — la integración real con la API de IA está pendiente de implementación.
+                        </div>
+                        {mockAnalyses.map(item => (
                         <div key={item.id} className="optimization-item">
                             <div className="item-left">
                                 <div className="category-tag">{item.category}</div>
@@ -120,7 +151,9 @@ const AIAnalyst = () => {
                                 </div>
                             </div>
                         </div>
-                    ))}
+                        ))}
+                        </>
+                    )}
                 </div>
             </div>
 

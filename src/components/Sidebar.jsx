@@ -12,7 +12,9 @@ import {
   Settings,
   ChevronLeft,
   LayoutGrid,
-  LogOut
+  LogOut,
+  Users,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,11 +25,13 @@ const Sidebar = () => {
 
   const menuItems = [
     { name: 'Dashboard General', icon: LayoutGrid, path: '/', section: 'MENU' },
-    { name: 'Historial', icon: History, path: '/historial' },
-    { name: 'Analítica', icon: BarChart2, path: '/analitica' },
+    { name: 'CRM Afiliados', icon: Users, path: '/afiliados' },
     { name: 'Tiempo Real (Live)', icon: Activity, path: '/tiempo-real' },
-    { name: 'Minutos', icon: Clock, path: '/minutos' },
-    { name: 'Analista IA', icon: Brain, path: '/analista-ia', adminOnly: true },
+    { name: 'Analítica', icon: BarChart2, path: '/analitica' },
+    { name: 'Historial', icon: History, path: '/historial' },
+    { name: 'Minutos y Costos', icon: Clock, path: '/minutos', allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Gestión Usuarios', icon: Shield, path: '/usuarios', section: 'ADMINISTRACIÓN', allowedRoles: ['admin'] },
+    { name: 'Analista IA', icon: Brain, path: '/analista-ia', allowedRoles: ['admin'] },
   ];
 
   const handleLogout = () => {
@@ -53,7 +57,8 @@ const Sidebar = () => {
 
       <nav className="sidebar-nav">
         {menuItems.map((item, index) => {
-          if (item.adminOnly && user?.role !== 'admin') return null;
+          if (item.allowedRoles && !item.allowedRoles.includes(user?.role)) return null;
+          if (item.adminOnly && user?.role !== 'admin') return null; // fallback
 
           return (
             <React.Fragment key={item.name}>

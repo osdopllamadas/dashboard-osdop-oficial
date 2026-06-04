@@ -17,6 +17,18 @@ export const ultravoxService = {
         }
     },
 
+    // Fetches the latest state of a single call directly
+    getCallDetail: async (callId) => {
+        try {
+            const response = await fetch(`/api/call-detail?id=${callId}`);
+            if (!response.ok) throw new Error(`Aggregator error: ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('[UltravoxService] Call Detail Error:', error);
+            return null;
+        }
+    },
+
     // Kept for backward compatibility in parts of the app that haven't migrated
     getCalls: async (params = {}, onProgress = null) => {
         try {
@@ -67,11 +79,12 @@ export const ultravoxService = {
             // Fallo explícito por palabra "error" en el contexto de transferencia (sumario o transcript)
             const hasErrorInSummary = summary.includes('error') && (summary.includes('transfer') || summary.includes('herramienta'));
             const hasErrorInTranscript = transcript.toLowerCase().includes('error') && transcript.toLowerCase().includes('transferirllamada');
+            const hasSpecificError = transcript.includes('ultravox_call_id is invalid') || transcript.includes('"status":"error"');
 
             // Si hay un éxito explícito, es efectiva. 
             // Si no, verificamos estados de fallo.
             if (hasSuccessInTranscript) return true;
-            if (hasErrorInSummary || hasErrorInTranscript) return false;
+            if (hasErrorInSummary || hasErrorInTranscript || hasSpecificError) return false;
 
             // Fallback: si no hay transcript detallado, usamos el estado técnico
             return ['normal', 'agent_ended', 'completed', 'hangup'].includes(c.endReason);
