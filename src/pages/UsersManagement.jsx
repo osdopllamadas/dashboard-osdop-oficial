@@ -3,7 +3,7 @@ import { Shield, Users, Plus, Edit2, Trash2, X, RefreshCcw, Check, Save } from '
 import { useAuth } from '../context/AuthContext';
 
 const UsersManagement = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,13 +15,14 @@ const UsersManagement = () => {
   const [formData, setFormData] = useState({ username: '', password: '', role: 'operator', status: 'active' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchToken = () => localStorage.getItem('ultra_token');
+  // Confirmation modal (replaces window.confirm)
+  const [confirmModal, setConfirmModal] = useState(null); // { id, username }
 
   const loadData = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const headers = { 'Authorization': `Bearer ${fetchToken()}` };
+      const headers = { 'Authorization': `Bearer ${token}` };
       const [usersRes, logsRes] = await Promise.all([
         fetch('/api/users', { headers }),
         fetch('/api/audit-logs', { headers })
@@ -69,7 +70,7 @@ const UsersManagement = () => {
       const res = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${fetchToken()}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
@@ -91,12 +92,19 @@ const UsersManagement = () => {
 
   const handleDisable = async (id, currentStatus) => {
     if (currentStatus === 'inactive') return;
-    if (!window.confirm('¿Estás seguro de que deseas deshabilitar este usuario?')) return;
-    
+    // Show inline confirmation modal instead of window.confirm
+    const targetUser = users.find(u => u.id === id);
+    setConfirmModal({ id, username: targetUser?.username || `#${id}` });
+  };
+
+  const confirmDisable = async () => {
+    if (!confirmModal) return;
+    const { id } = confirmModal;
+    setConfirmModal(null);
     try {
       const res = await fetch(`/api/users/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${fetchToken()}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -104,7 +112,7 @@ const UsersManagement = () => {
       }
       loadData();
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     }
   };
 
@@ -304,6 +312,41 @@ const UsersManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DISABLE MODAL — replaces window.confirm */}
+      {confirmModal && (
+        <div className="modal-overlay" onClick={() => setConfirmModal(null)}>
+          <div className="modal-content-card small-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>⚠️ Confirmar acción</h2>
+              <button className="close-btn-circle" onClick={() => setConfirmModal(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                ¿Estás seguro de que deseas <strong style={{ color: '#ef4444' }}>deshabilitar</strong> al usuario{' '}
+                <strong style={{ color: 'white' }}>"{confirmModal.username}"</strong>?
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.5rem' }}>
+                El usuario perderá acceso al sistema inmediatamente. Esta acción puede revertirse desde Editar Usuario.
+              </p>
+              <div className="modal-footer no-border">
+                <button className="utility-btn" onClick={() => setConfirmModal(null)}>
+                  Cancelar
+                </button>
+                <button
+                  className="primary-btn"
+                  onClick={confirmDisable}
+                  style={{ background: '#ef4444', boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}
+                >
+                  <Trash2 size={15} /> Deshabilitar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

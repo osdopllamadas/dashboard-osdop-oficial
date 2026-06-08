@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ultravoxService } from '../services/ultravox';
 import {
   Phone, CheckCircle, AlertCircle, Clock, Activity, DollarSign, RefreshCcw, TrendingUp
@@ -19,9 +19,32 @@ import {
 } from 'recharts';
 import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
+import { useAuth } from '../context/AuthContext';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const RealTime = () => {
   const { allCalls, isFetchingGlobal, error, filters, setFilters } = useCalls();
+  const { token } = useAuth();
+  
+  const [consultasData, setConsultasData] = useState({ chartData: [], kpis: {} });
+
+  useEffect(() => {
+    const fetchConsultas = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/consultas_generales`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setConsultasData(data);
+            }
+        } catch (err) {
+            console.error('Error fetching consultas generales:', err);
+        }
+    };
+    fetchConsultas();
+  }, [token]);
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -42,9 +65,9 @@ const RealTime = () => {
         if (filters.status === 'Fallida' && ok) return false;
       }
       if (filters.phone && !call.customerPhoneNumber?.includes(filters.phone)) return false;
-      const dur = typeof (call.billedDurationSeconds || call.billedDuration) === 'string'
-        ? parseFloat(call.billedDurationSeconds || call.billedDuration)
-        : (call.billedDurationSeconds || call.billedDuration || 0);
+      const dur = typeof call.billedDuration === 'string'
+        ? parseFloat(call.billedDuration)
+        : (call.billedDuration || 0);
       if (filters.minSec && dur < filters.minSec) return false;
       return true;
     });
@@ -65,7 +88,7 @@ const RealTime = () => {
       const d = call.created.split('T')[0];
       if (!daily[d]) daily[d] = { date: d, calls: 0, minutes: 0 };
       daily[d].calls += 1;
-      daily[d].minutes += (parseFloat(call.billedDurationSeconds || call.billedDuration || 0) / 60);
+      daily[d].minutes += (parseFloat(call.billedDuration || 0) / 60);
     });
     return Object.values(daily).sort((a, b) => a.date.localeCompare(b.date)).map(d => ({
       ...d,
@@ -147,10 +170,11 @@ const RealTime = () => {
 
           <div className="stats-row">
             <StatCard title="LLAMADAS TOTALES" value={stats.totalCalls} icon={<Phone />} color="blue" formula="Count(all)" />
+            <StatCard title="RESUELTAS VS TRANSFER." value={`${stats.effectiveTransfers + (consultasData.kpis.exitosas || 0)}`} sub={`${stats.totalTransfers} Transferencias`} icon={<CheckCircle />} color="green" formula="Resueltas vs Transf." />
             <StatCard title="LLAMADAS FALLIDAS" value={stats.failedCalls} icon={<AlertCircle />} color="red" formula="EndState != normal" />
-            <StatCard title="TRANSFERENCIAS" value={stats.totalTransfers} icon={<TrendingUp />} color="purple" formula="Agent Transfers" />
-            <StatCard title="TASA ÉXITO" value={stats.successRate} icon={<CheckCircle />} color="green" formula="Success / Total" />
+            <StatCard title="TASA ÉXITO" value={stats.successRate} icon={<Activity />} color="cyan" formula="Success / Total" />
             <StatCard title="DURACIÓN PROM." value={stats.avgDuration} icon={<Clock />} color="orange" formula="TotalSec / Count" />
+            <StatCard title="COSTO TOTAL" value={`$${stats.totalCost}`} icon={<DollarSign />} color="purple" formula="Tasa $0.065/min" />
           </div>
 
           <div className="charts-container mt-4">
@@ -263,6 +287,31 @@ const RealTime = () => {
                   <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'linear-gradient(135deg, #ef4444, #f59e0b)' }}></div>
                   Fallidas: {stats.failedTransfers}
                 </div>
+              </div>
+            </div>
+
+            <div className="chart-card glass">
+              <div className="chart-info">
+                <h3>Motivos de Llamada</h3>
+                <p>Temas más consultados extraídos por la IA</p>
+              </div>
+              <div className="chart-view" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '280px' }}>
+                {consultasData.chartData && consultasData.chartData.length > 0 ? (
+                    <RechartsResponsiveContainer width="100%" height="100%">
+                    <RechartsBarChart data={consultasData.chartData} layout="vertical" margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
+                        <RechartsCartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+                        <RechartsXAxis type="number" stroke="#64748b" fontSize={11} />
+                        <RechartsYAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={120} />
+                        <RechartsTooltip
+                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
+                        itemStyle={{ color: '#fff' }}
+                        />
+                        <RechartsBar dataKey="value" fill="#06b6d4" radius={[0, 4, 4, 0]} />
+                    </RechartsBarChart>
+                    </RechartsResponsiveContainer>
+                ) : (
+                    <div style={{ color: '#64748b', fontSize: '0.85rem' }}>No hay datos suficientes de la IA.</div>
+                )}
               </div>
             </div>
           </div>
@@ -442,7 +491,7 @@ const RealTime = () => {
 
         .stats-row {
           display: grid;
-          grid-template-columns: repeat(5, 1fr);
+          grid-template-columns: repeat(6, 1fr);
           gap: 1rem;
         }
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { ultravoxService } from '../services/ultravox';
+import { useAuth } from './AuthContext';
 
 const CallContext = createContext({});
 
@@ -19,6 +20,7 @@ export const CallProvider = ({ children }) => {
         status: 'Todos'
     });
 
+    const { token } = useAuth();
     const isFetchingRef = useRef(false);
 
     const refreshData = async () => {
@@ -26,7 +28,7 @@ export const CallProvider = ({ children }) => {
         isFetchingRef.current = true;
 
         try {
-            const data = await ultravoxService.getDashboardSummary();
+            const data = await ultravoxService.getDashboardSummary(token);
             setAllCalls(data.calls);
             setStats(data);
             setLoading(false);

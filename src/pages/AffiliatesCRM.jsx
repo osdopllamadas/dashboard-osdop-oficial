@@ -3,26 +3,24 @@ import { Users, Phone, Clock, CheckCircle, XCircle, AlertCircle, Filter, Chevron
 import { useAuth } from '../context/AuthContext';
 
 const AffiliatesCRM = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [affiliations, setAffiliations] = useState([]);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState(''); // '' = all
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(null); // id of the record being updated
 
-  const fetchToken = () => localStorage.getItem('ultra_token');
-
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const headers = { 'Authorization': `Bearer ${fetchToken()}` };
+      const headers = { 'Authorization': `Bearer ${token}` };
       const statusQuery = filterStatus ? `?status=${filterStatus}` : '';
-      
+
       const [listRes, statsRes] = await Promise.all([
         fetch(`/api/affiliations${statusQuery}`, { headers }),
         fetch('/api/affiliations/stats', { headers })
       ]);
-      
+
       if (listRes.ok) setAffiliations(await listRes.json());
       if (statsRes.ok) setStats(await statsRes.json());
     } catch (err) {
@@ -42,14 +40,14 @@ const AffiliatesCRM = () => {
       const res = await fetch(`/api/affiliations/${id}/status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${fetchToken()}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
       });
-      
+
       if (!res.ok) throw new Error('Error updating status');
-      
+
       // Update local state smoothly
       setAffiliations(prev => prev.map(a => a.id === id ? { ...a, status: newStatus } : a));
       loadData(); // Re-fetch stats in background
@@ -61,7 +59,7 @@ const AffiliatesCRM = () => {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'pendiente': return { bg: 'rgba(245, 158, 11, 0.15)', text: '#fbbf24', icon: <Clock size={14} /> };
       case 'contactado': return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981', icon: <CheckCircle size={14} /> };
       case 'descartado': return { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444', icon: <XCircle size={14} /> };
@@ -73,13 +71,13 @@ const AffiliatesCRM = () => {
     <div className="page-container animate-fade-in">
       <div className="header-row">
         <header className="page-header">
-          <h1>CRM <span className="text-secondary-gradient">Afiliados</span></h1>
+          <h1>LEADS <span className="text-secondary-gradient">INTERESADOS EN AFILIARSE</span></h1>
           <p>Gestión de leads y potenciales afiliaciones detectadas por IA.</p>
         </header>
         <div className="header-actions">
           <div className="filter-select-wrapper">
             <Filter size={16} className="filter-icon" />
-            <select 
+            <select
               className="modern-select"
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
@@ -138,10 +136,11 @@ const AffiliatesCRM = () => {
             <thead>
               <tr>
                 <th>Fecha</th>
+                <th>Nombre / Datos</th>
                 <th>Teléfono</th>
+                <th>Trámite</th>
                 <th>Motivo Detectado</th>
                 <th>Interés</th>
-                <th>Datos Faltantes (IA)</th>
                 <th>Gestión</th>
                 <th>Acciones</th>
               </tr>
@@ -157,32 +156,44 @@ const AffiliatesCRM = () => {
                 affiliations.map(aff => {
                   const sColor = getStatusColor(aff.status);
                   const isMissing = aff.missing_info && aff.interested === 1;
-                  
+
                   return (
                     <tr key={aff.id}>
                       <td className="text-sm text-muted">
                         {new Date(aff.created_at).toLocaleDateString()}
                       </td>
+                      <td className="fw-600">
+                        {aff.nombre ? <div className="text-primary">{aff.nombre}</div> : <span className="text-muted text-sm">Sin nombre</span>}
+                        {(aff.dni || aff.localidad) && (
+                          <div className="text-sm text-muted" style={{ marginTop: '4px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {aff.dni && <span> {aff.dni}</span>}
+                            {aff.localidad && <span>📍 {aff.localidad}</span>}
+                          </div>
+                        )}
+                      </td>
                       <td className="fw-600 text-primary">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Phone size={14} /> {aff.phone}
+                          <Phone size={14} /> {aff.phone || <span className="text-muted text-sm">Sin teléfono</span>}
                         </div>
                       </td>
-                      <td>{aff.reason}</td>
                       <td>
-                        {aff.interested === 1 ? (
-                          <span className="badge-interest">🔥 Interesado</span>
-                        ) : (
-                          <span className="text-muted text-sm">No explícito</span>
+                        <span style={{ fontWeight: 500 }}>{aff.tipo_tramite || <span className="text-muted">No especificado</span>}</span>
+                      </td>
+                      <td>
+                        {aff.reason || <span className="text-muted">No especificado</span>}
+                        {aff.motivo_finalizacion && (
+                          <div className="text-sm text-muted" style={{ marginTop: '4px', fontStyle: 'italic' }}>
+                            {aff.motivo_finalizacion}
+                          </div>
                         )}
                       </td>
                       <td>
-                        {isMissing ? (
-                          <span className="badge-missing" title={aff.missing_info}>
-                            <AlertCircle size={12} /> {aff.missing_info.split(',').length} campos
-                          </span>
+                        {aff.interested === 1 ? (
+                          <span className="badge-interest"> Interesado</span>
                         ) : (
-                          <span className="text-muted text-sm">—</span>
+                          <span className="text-muted text-sm">
+                            {aff.estado_llamada || 'No explícito'}
+                          </span>
                         )}
                       </td>
                       <td>
@@ -194,7 +205,7 @@ const AffiliatesCRM = () => {
                         {isUpdatingStatus === aff.id ? (
                           <RefreshCcw size={16} className="spin-icon text-primary" />
                         ) : (
-                          <select 
+                          <select
                             className="status-changer"
                             value={aff.status}
                             onChange={(e) => updateStatus(aff.id, e.target.value)}

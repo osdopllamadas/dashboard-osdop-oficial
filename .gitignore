@@ -25,6 +25,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# SQLite database
+# SQLite database (stored in project root /data/ by the server)
+data/
 server/data/
 

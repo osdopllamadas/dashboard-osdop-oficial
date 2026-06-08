@@ -3,6 +3,7 @@ import { ultravoxService } from '../services/ultravox';
 import { Phone, Download, X, Play, Music, MessageSquare, Info, RefreshCcw, Pause, SkipBack, SkipForward } from 'lucide-react';
 import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
+import { useAuth } from '../context/AuthContext';
 
 const CustomAudioPlayer = ({ src, fileName = 'grabacion', onError }) => {
   const audioRef = React.useRef(null);
@@ -164,17 +165,25 @@ const Historial = () => {
   const [localDetail, setLocalDetail] = useState(null);
   const [hasError, setHasError] = useState(false);
   const { allCalls, isFetchingGlobal, filters, setFilters } = useCalls();
+  const { token } = useAuth();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const selectedCall = useMemo(() => {
     if (localDetail && localDetail.callId === selectedCallId) return localDetail;
     return allCalls?.find(c => c.callId === selectedCallId);
   }, [allCalls, selectedCallId, localDetail]);
 
-  // Reset local detail and error state when closing or changing call
+  // Reset local detail, pagination page, and error state when closing or changing call/filters
   useEffect(() => {
     setLocalDetail(null);
     setHasError(false);
   }, [selectedCallId]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   // OPTIMIZATION: High-frequency polling when audio is missing or has error
   useEffect(() => {
@@ -182,13 +191,13 @@ const Historial = () => {
 
     const interval = setInterval(async () => {
       try {
-        const detail = await ultravoxService.getCallDetail(selectedCallId);
+        const detail = await ultravoxService.getCallDetail(selectedCallId, token);
         if (detail && detail.recordingUrl) {
           setLocalDetail(detail);
           setHasError(false);
         }
       } catch (e) { }
-    }, 2500);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [selectedCallId, selectedCall?.recordingUrl, hasError]);
@@ -216,6 +225,12 @@ const Historial = () => {
       return true;
     });
   }, [allCalls, filters]);
+
+  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
+  const paginatedCalls = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredCalls.slice(start, start + itemsPerPage);
+  }, [filteredCalls, currentPage]);
 
   const isLoadingInitial = isFetchingGlobal && (!allCalls || allCalls.length === 0);
 
@@ -249,8 +264,8 @@ const Historial = () => {
     <div className="page-container animate-fade-in">
       <div className="header-row">
         <header className="page-header">
-          <h1>Historial de <span className="text-secondary-gradient">Llamadas</span></h1>
-          <p>Registro completo de interacciones — {filteredCalls.length} resultados</p>
+          <h1>Historial de <span className="text-secondary-gradient">Llamadas en vivo</span></h1>
+          <p>Registro completo de interacciones en vivo de cada llamada — {filteredCalls.length} resultados</p>
         </header>
         <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {isFetchingGlobal && (
@@ -285,14 +300,14 @@ const Historial = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredCalls.length === 0 && (
+                {paginatedCalls.length === 0 && (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
                       <p>No se encontraron llamadas que coincidan con los filtros.</p>
                     </td>
                   </tr>
                 )}
-                {filteredCalls.map(call => (
+                {paginatedCalls.map(call => (
                   <tr key={call.callId}>
                     <td className="tel-cell clickable" onClick={() => setSelectedCallId(call.callId)}>
                       <div className="icon-circle"><Phone size={14} /></div>
@@ -317,6 +332,32 @@ const Historial = () => {
                 ))}
               </tbody>
             </table>
+            {totalPages > 1 && (
+              <div className="pagination-controls" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', borderTop: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Mostrando del {((currentPage - 1) * itemsPerPage) + 1} al {Math.min(currentPage * itemsPerPage, filteredCalls.length)} de {filteredCalls.length} llamadas
+                </span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    style={{ padding: '0.5rem 1rem', background: currentPage === 1 ? 'rgba(255,255,255,0.05)' : 'var(--primary)', color: 'white', border: 'none', borderRadius: '6px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.85rem', transition: 'background 0.2s' }}
+                  >
+                    Anterior
+                  </button>
+                  <span style={{ fontSize: '0.85rem', color: 'white', padding: '0 0.5rem' }}>
+                    Página {currentPage} de {totalPages}
+                  </span>
+                  <button
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    style={{ padding: '0.5rem 1rem', background: currentPage === totalPages ? 'rgba(255,255,255,0.05)' : 'var(--primary)', color: 'white', border: 'none', borderRadius: '6px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.85rem', transition: 'background 0.2s' }}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

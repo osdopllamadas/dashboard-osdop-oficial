@@ -3,13 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import RealTime from './pages/RealTime';
-import Analytics from './pages/Analytics';
 import Minutes from './pages/Minutes';
 import Historial from './pages/Historial';
 import AIAnalyst from './pages/AIAnalyst';
 import LiveActivity from './pages/LiveActivity';
 import UsersManagement from './pages/UsersManagement';
 import AffiliatesCRM from './pages/AffiliatesCRM';
+import GeneralQueries from './pages/GeneralQueries';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CallProvider } from './context/CallContext';
 import './index.css';
@@ -99,15 +99,15 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/analitica" element={
-                <ProtectedRoute>
-                  <AppLayout><Analytics /></AppLayout>
-                </ProtectedRoute>
-              } />
-
               <Route path="/historial" element={
                 <ProtectedRoute>
                   <AppLayout><Historial /></AppLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/consultas" element={
+                <ProtectedRoute>
+                  <AppLayout><GeneralQueries /></AppLayout>
                 </ProtectedRoute>
               } />
 

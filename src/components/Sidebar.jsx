@@ -14,7 +14,8 @@ import {
   LayoutGrid,
   LogOut,
   Users,
-  Shield
+  Shield,
+  FolderSearch
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,8 +28,8 @@ const Sidebar = () => {
     { name: 'Dashboard General', icon: LayoutGrid, path: '/', section: 'MENU' },
     { name: 'CRM Afiliados', icon: Users, path: '/afiliados' },
     { name: 'Tiempo Real (Live)', icon: Activity, path: '/tiempo-real' },
-    { name: 'Analítica', icon: BarChart2, path: '/analitica' },
-    { name: 'Historial', icon: History, path: '/historial' },
+    { name: 'Historial en Vivo', icon: History, path: '/historial' },
+    { name: 'Consultas Generales', icon: FolderSearch, path: '/consultas' },
     { name: 'Minutos y Costos', icon: Clock, path: '/minutos', allowedRoles: ['admin', 'supervisor'] },
     { name: 'Gestión Usuarios', icon: Shield, path: '/usuarios', section: 'ADMINISTRACIÓN', allowedRoles: ['admin'] },
     { name: 'Analista IA', icon: Brain, path: '/analista-ia', allowedRoles: ['admin'] },

@@ -4,6 +4,7 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [token, setToken] = useState(() => localStorage.getItem('ultra_token') || null);
     const [authLoading, setAuthLoading] = useState(true); // true while validating token on load
 
     // On mount: validate any stored token with the server
@@ -17,20 +18,25 @@ export const AuthProvider = ({ children }) => {
         fetch('/api/auth/validate', {
             headers: { 'Authorization': `Bearer ${token}` }
         })
-            .then(res => res.ok ? res.json() : null)
+            .then(res => {
+                if (res.ok) return res.json();
+                // Only clear session on explicit auth rejection (401/403), NOT on network errors
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('ultra_token');
+                    setToken(null);
+                    setUser(null);
+                }
+                return null;
+            })
             .then(data => {
                 if (data && data.username) {
                     setUser({ username: data.username, role: data.role });
-                } else {
-                    // Token expired or invalid — clear session
-                    localStorage.removeItem('ultra_token');
-                    setUser(null);
                 }
             })
             .catch(() => {
-                // Network error: clear session to force re-login
-                localStorage.removeItem('ultra_token');
-                setUser(null);
+                // Network error (server temporarily down) — keep session alive
+                // The user will be re-validated on next navigation or page reload
+                console.warn('[Auth] Server unreachable during token validation — session preserved.');
             })
             .finally(() => setAuthLoading(false));
     }, []);
@@ -47,6 +53,7 @@ export const AuthProvider = ({ children }) => {
                 return false; // Invalid credentials
             }
             localStorage.setItem('ultra_token', data.token);
+            setToken(data.token);
             setUser({ username: data.username, role: data.role });
             return true;
         } catch (err) {
@@ -57,11 +64,12 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         setUser(null);
+        setToken(null);
         localStorage.removeItem('ultra_token');
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, authLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, authLoading }}>
             {children}
         </AuthContext.Provider>
     );

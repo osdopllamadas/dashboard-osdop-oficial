@@ -23,9 +23,9 @@ const Minutes = () => {
       }
       if (filters.phone && !call.customerPhoneNumber?.includes(filters.phone)) return false;
 
-      const dur = typeof (call.billedDurationSeconds || call.billedDuration) === 'string'
-        ? parseFloat(call.billedDurationSeconds || call.billedDuration)
-        : (call.billedDurationSeconds || call.billedDuration || 0);
+      const dur = typeof call.billedDuration === 'string'
+        ? parseFloat(call.billedDuration)
+        : (call.billedDuration || 0);
 
       if (filters.minSec && dur < filters.minSec) return false;
 

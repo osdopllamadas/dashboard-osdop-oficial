@@ -1,53 +1,63 @@
-import React, { useState } from 'react';
-import { Brain, Save, Zap, MessageSquare, TrendingUp, Lightbulb, ShieldCheck, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Brain, Zap, MessageSquare, Lightbulb, ShieldCheck, Target, RefreshCw, CheckCircle, AlertTriangle, Activity, Clock, PhoneOff } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 const AIAnalyst = () => {
+    const { token } = useAuth();
+    const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
     const [apiKey, setApiKey] = useState('');
-    const [selectedModel, setSelectedModel] = useState('gpt-4o');
+    const [timeRange, setTimeRange] = useState('7');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analyzed, setAnalyzed] = useState(false);
+    const [analyses, setAnalyses] = useState([]);
+    const [healthScore, setHealthScore] = useState(null);
+    const [resolutionRate, setResolutionRate] = useState(null);
+    const [interruptionRate, setInterruptionRate] = useState(null);
+    const [avgDurationSecs, setAvgDurationSecs] = useState(null);
+    const [trend, setTrend] = useState('');
+    const [error, setError] = useState(null);
 
-    // Fix: button was permanently stuck in "Procesando..." — reset after simulated delay
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!apiKey.trim()) {
-            alert('Ingresa una API Key antes de ejecutar el análisis.');
+            setError('Por favor, ingresa tu API Key para ejecutar el análisis.');
             return;
         }
+
         setIsAnalyzing(true);
         setAnalyzed(false);
-        // TODO: Replace with real AI API call (OpenAI/Gemini) using apiKey + call transcripts from backend
-        setTimeout(() => {
-            setIsAnalyzing(false);
-            setAnalyzed(true);
-        }, 2500);
-    };
+        setError(null);
 
-    const mockAnalyses = [
-        {
-            id: 1,
-            category: 'Empatía y Tono',
-            score: 85,
-            observation: 'El agente mantiene un tono sumamente profesional, pero tiende a ser robótico durante el cierre.',
-            improvement: 'Ajustar el prompt del sistema para incluir variaciones dinámicas en las despedidas según el sentimiento de la llamada.',
-            impact: 'Alto'
-        },
-        {
-            id: 2,
-            category: 'Resolución al primer contacto',
-            score: 72,
-            observation: 'Se detectaron 3 llamadas donde el agente no pudo responder dudas sobre la garantía.',
-            improvement: 'Aumentar la base de conocimientos con la sección de "Políticas de Reemplazo" del manual v2.',
-            impact: 'Crítico'
-        },
-        {
-            id: 3,
-            category: 'Claridad en la Oferta',
-            score: 94,
-            observation: 'La estructura de beneficios se comunica de forma impecable.',
-            improvement: 'Mantener la estructura actual, pero intentar reducir la duración de la explicación en un 10%.',
-            impact: 'Bajo'
+        try {
+            const res = await fetch(`${API_BASE}/api/ai/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ model: selectedModel, timeRange, apiKey })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Error del servidor: ${res.status}`);
+            }
+
+            const data = await res.json();
+            setAnalyses(data.analyses || []);
+            setHealthScore(data.agentHealthScore ?? null);
+            setResolutionRate(data.resolutionRate ?? null);
+            setInterruptionRate(data.interruptionRate ?? null);
+            setAvgDurationSecs(data.avgDurationSecs ?? null);
+            setTrend(data.trend || '');
+            setAnalyzed(true);
+        } catch (err) {
+            setError(err.message || 'Error de conexión con el servidor de análisis.');
+        } finally {
+            setIsAnalyzing(false);
         }
-    ];
+    };
 
     return (
         <div className="page-container">
@@ -60,29 +70,42 @@ const AIAnalyst = () => {
                 <div className="glass p-1-5 br-lg col-span-2">
                     <div className="section-title">
                         <ShieldCheck size={20} className="text-primary" />
-                        <h3>Configuración de Seguridad y Modelo</h3>
+                        <h3>Motor de Análisis</h3>
                     </div>
                     <div className="config-form-horizontal">
                         <div className="input-group-flex">
-                            <label>API Provider Key</label>
-                            <input
-                                type="password"
-                                value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
-                                placeholder="Introducir clave de OpenAI o Gemini..."
-                                className="modern-input"
-                            />
-                        </div>
-                        <div className="input-group-flex">
-                            <label>Motor de Análisis</label>
+                            <label>Modelo de Análisis</label>
                             <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="modern-select">
-                                <option value="gpt-4o">OpenAI GPT-4o (Recomendado)</option>
                                 <option value="gemini-1.5-flash">Gemini 1.5 Flash (Velocidad)</option>
                                 <option value="gemini-1.5-pro">Gemini 1.5 Pro (Precisión)</option>
+                                <option value="gpt-4o">OpenAI GPT-4o (Premium)</option>
+                                <option value="claude-3-haiku-20240307">Anthropic Claude 3 Haiku</option>
+                                <option value="claude-3-5-sonnet-20240620">Anthropic Claude 3.5 Sonnet</option>
                             </select>
                         </div>
-                        <button className="btn-primary-glow">
-                            <Save size={18} /> Guardar
+                        <div className="input-group-flex">
+                            <label>Rango de Tiempo</label>
+                            <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} className="modern-select">
+                                <option value="7">Últimos 7 días</option>
+                                <option value="15">Últimos 15 días</option>
+                                <option value="30">Últimos 30 días</option>
+                                <option value="all">Todo el historial</option>
+                            </select>
+                        </div>
+                        <div className="input-group-flex" style={{ flex: 1.5 }}>
+                            <label>API Key (No se guardará)</label>
+                            <input 
+                                type="password" 
+                                value={apiKey} 
+                                onChange={(e) => setApiKey(e.target.value)} 
+                                placeholder={selectedModel.includes('gemini') ? 'AIzaSy...' : selectedModel.includes('gpt') ? 'sk-...' : 'sk-ant-...'}
+                                className="modern-select" 
+                                style={{ cursor: 'text' }}
+                            />
+                        </div>
+                        <button className="btn-primary-glow" onClick={handleAnalyze} disabled={isAnalyzing}>
+                            {isAnalyzing ? <RefreshCw size={18} className="spin-icon" /> : <Zap size={18} />}
+                            {isAnalyzing ? 'Analizando...' : 'Ejecutar Análisis'}
                         </button>
                     </div>
                 </div>
@@ -90,13 +113,50 @@ const AIAnalyst = () => {
                 <div className="glass p-1-5 br-lg">
                     <div className="section-title">
                         <Target size={20} className="text-warning" />
-                        <h3>KPI de Mejora</h3>
+                        <h3>KPIs Estratégicos</h3>
                     </div>
-                    <div className="kpi-score-display">
-                        <span className="score">83.5</span>
-                        <span className="label">Índice de Salud del Agente</span>
-                        <div className="trend-up">+2.4% vs semana previa</div>
+                    <div className="kpi-grid">
+                        <div className="kpi-mini-card">
+                            <div className="kpi-header">
+                                <Activity size={14} className="text-primary" />
+                                <span>Salud General</span>
+                            </div>
+                            <div className="kpi-value" style={{ color: healthScore >= 75 ? '#10b981' : healthScore >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                {healthScore !== null ? `${healthScore}` : '—'}
+                            </div>
+                        </div>
+
+                        <div className="kpi-mini-card">
+                            <div className="kpi-header">
+                                <CheckCircle size={14} className="text-success" />
+                                <span>Resolución</span>
+                            </div>
+                            <div className="kpi-value" style={{ color: resolutionRate >= 70 ? '#10b981' : '#f59e0b' }}>
+                                {resolutionRate !== null ? `${resolutionRate}%` : '—'}
+                            </div>
+                        </div>
+
+                        <div className="kpi-mini-card">
+                            <div className="kpi-header">
+                                <PhoneOff size={14} className="text-danger" />
+                                <span>Interrupción</span>
+                            </div>
+                            <div className="kpi-value" style={{ color: interruptionRate > 20 ? '#ef4444' : '#10b981' }}>
+                                {interruptionRate !== null ? `${interruptionRate}%` : '—'}
+                            </div>
+                        </div>
+
+                        <div className="kpi-mini-card">
+                            <div className="kpi-header">
+                                <Clock size={14} className="text-warning" />
+                                <span>Duración Prom.</span>
+                            </div>
+                            <div className="kpi-value text-default">
+                                {avgDurationSecs !== null ? `${avgDurationSecs}s` : '—'}
+                            </div>
+                        </div>
                     </div>
+                    {trend && <div className="trend-up" style={{ textAlign: 'center', marginTop: '1rem' }}>{trend}</div>}
                 </div>
             </div>
 
@@ -106,28 +166,43 @@ const AIAnalyst = () => {
                         <Zap size={24} className="text-warning-glow" />
                         <h2>Sugerencias de Optimización Automática</h2>
                     </div>
-                                    <button className={`btn-analyze ${isAnalyzing ? 'loading' : ''}`} onClick={handleAnalyze} disabled={isAnalyzing}>
-                        {isAnalyzing ? (
-                            <><span style={{display:'inline-block', animation:'spin 0.8s linear infinite', marginRight: '8px'}}>⏳</span> Procesando...
-                            </>
-                        ) : 'Ejecutar Análisis Completo'}
-                    </button>
-                </div>
-
-                                <div className="optimization-list">
-                    {!analyzed && !isAnalyzing && (
-                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
-                            <Brain size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                            <p style={{ fontSize: '0.9rem' }}>Ingresa tu API Key y ejecuta el análisis para ver los resultados.</p>
-                            <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#475569' }}>Se analizarán las transcripciones de las llamadas del historial mediante el modelo seleccionado.</p>
+                    {analyzed && (
+                        <div className="success-pill">
+                            <CheckCircle size={14} />
+                            Análisis completado
                         </div>
                     )}
-                    {analyzed && (
-                        <>
-                        <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '10px', padding: '0.75rem 1.25rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#f59e0b' }}>
-                            ⚠️ Resultados de ejemplo — la integración real con la API de IA está pendiente de implementación.
+                </div>
+
+                <div className="optimization-list">
+                    {error && (
+                        <div className="error-banner">
+                            <AlertTriangle size={16} />
+                            <span>{error}</span>
                         </div>
-                        {mockAnalyses.map(item => (
+                    )}
+
+                    {!analyzed && !isAnalyzing && !error && (
+                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#64748b' }}>
+                            <Brain size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                            <p style={{ fontSize: '0.9rem' }}>Presiona "Ejecutar Análisis" para obtener insights estratégicos en tiempo real.</p>
+                            <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#475569' }}>
+                                Se analizarán las métricas acumuladas en la base de datos local (llamadas, duración, resolución, cobertura).
+                            </p>
+                        </div>
+                    )}
+
+                    {isAnalyzing && (
+                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: '#a855f7' }}>
+                            <div className="analyzing-spinner">
+                                <Brain size={40} style={{ opacity: 0.6 }} />
+                            </div>
+                            <p style={{ marginTop: '1rem', fontSize: '0.9rem' }}>Procesando métricas de llamadas...</p>
+                            <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: '#64748b' }}>Calculando tasas de resolución, empatía y claridad.</p>
+                        </div>
+                    )}
+
+                    {analyzed && analyses.map(item => (
                         <div key={item.id} className="optimization-item">
                             <div className="item-left">
                                 <div className="category-tag">{item.category}</div>
@@ -144,16 +219,30 @@ const AIAnalyst = () => {
                                     <Lightbulb size={16} className="text-warning" />
                                     <p><strong>Mejora sugerida:</strong> {item.improvement}</p>
                                 </div>
+                                {item.evidence && (
+                                    <div className="evidence-wrap" style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', borderLeft: '3px solid #6366f1' }}>
+                                        <p style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic', margin: 0 }}>
+                                            <strong style={{ color: '#cbd5e1' }}>Evidencia (Llamadas reales):</strong> "{item.evidence}"
+                                        </p>
+                                    </div>
+                                )}
+                                <div style={{ marginTop: '1rem' }}>
+                                    <button 
+                                        onClick={() => alert(`Simulando aplicación de mejora en Ultravox API...\nCambio a realizar: ${item.improvement}`)} 
+                                        className="btn-primary-glow" 
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', width: 'fit-content', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                    >
+                                        <Zap size={14} /> Aplicar Mejora
+                                    </button>
+                                </div>
                             </div>
                             <div className="item-right">
                                 <div className="circular-score" style={{ '--percent': item.score }}>
-                                    {item.score}%
+                                    <span>{item.score}%</span>
                                 </div>
                             </div>
                         </div>
-                        ))}
-                        </>
-                    )}
+                    ))}
                 </div>
             </div>
 
@@ -183,6 +272,7 @@ const AIAnalyst = () => {
           display: flex;
           align-items: flex-end;
           gap: 1.5rem;
+          flex-wrap: wrap;
         }
 
         .input-group-flex {
@@ -190,11 +280,12 @@ const AIAnalyst = () => {
           flex-direction: column;
           gap: 8px;
           flex: 1;
+          min-width: 180px;
         }
 
         .input-group-flex label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
 
-        .modern-input, .modern-select {
+        .modern-select {
           background: var(--bg-primary);
           border: 1px solid var(--border-color);
           padding: 0.75rem 1rem;
@@ -209,6 +300,19 @@ const AIAnalyst = () => {
           color: white;
         }
 
+        .secure-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.72rem;
+          color: #10b981;
+          background: rgba(16, 185, 129, 0.08);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          padding: 0.5rem 0.85rem;
+          border-radius: 20px;
+          white-space: nowrap;
+        }
+
         .btn-primary-glow {
           background: var(--primary);
           color: white;
@@ -219,19 +323,63 @@ const AIAnalyst = () => {
           align-items: center;
           gap: 8px;
           box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+          white-space: nowrap;
+          cursor: pointer;
+          border: none;
+          transition: opacity 0.2s;
         }
 
-        .kpi-score-display {
+        .btn-primary-glow:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spin-icon {
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+        }
+
+        .kpi-mini-card {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          padding: 1rem;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 100px;
+          gap: 6px;
         }
 
-        .kpi-score-display .score { font-size: 2.5rem; font-weight: 800; color: #10b981; }
-        .kpi-score-display .label { font-size: 0.8rem; color: var(--text-muted); }
-        .kpi-score-display .trend-up { font-size: 0.7rem; color: #10b981; margin-top: 4px; }
+        .kpi-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          font-weight: 600;
+        }
+
+        .kpi-value {
+          font-size: 1.5rem;
+          font-weight: 800;
+        }
+        
+        .text-success { color: #10b981; }
+        .text-danger { color: #ef4444; }
+        .text-default { color: #f8fafc; }
+
+        .trend-up { font-size: 0.75rem; color: #10b981; }
 
         .analysis-header {
           display: flex;
@@ -243,13 +391,39 @@ const AIAnalyst = () => {
 
         .title-wrap { display: flex; align-items: center; gap: 15px; }
 
-        .btn-analyze {
-          background: linear-gradient(135deg, #a855f7, #6366f1);
-          color: white;
-          padding: 10px 24px;
-          border-radius: 30px;
-          font-weight: 700;
-          box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+        .success-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+          padding: 6px 14px;
+          border-radius: 20px;
+        }
+
+        .error-banner {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          color: #ef4444;
+          padding: 0.85rem 1.25rem;
+          border-radius: 10px;
+          font-size: 0.85rem;
+        }
+
+        .analyzing-spinner {
+          display: flex;
+          justify-content: center;
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.1); }
         }
 
         .optimization-list {
@@ -277,6 +451,7 @@ const AIAnalyst = () => {
         .impact-badge { font-size: 0.65rem; padding: 4px 8px; border-radius: 4px; font-weight: 700; width: fit-content; }
         .impact-badge[data-impact="Crítico"] { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .impact-badge[data-impact="Alto"] { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .impact-badge[data-impact="Medio"] { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         .impact-badge[data-impact="Bajo"] { background: rgba(16, 185, 129, 0.2); color: #10b981; }
 
         .obs-wrap, .suggest-wrap { display: flex; gap: 12px; font-size: 0.9rem; line-height: 1.5; }
@@ -292,7 +467,7 @@ const AIAnalyst = () => {
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 0.9rem;
+          font-size: 0.75rem;
           position: relative;
         }
         .circular-score::after {
@@ -310,6 +485,7 @@ const AIAnalyst = () => {
         .br-lg { border-radius: var(--radius-lg); }
         .mb-4 { margin-bottom: 2rem; }
         .mb-2 { margin-bottom: 1.5rem; }
+        .p-2 { padding: 2rem; }
       `}</style>
         </div>
     );
