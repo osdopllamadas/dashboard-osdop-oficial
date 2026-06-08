@@ -171,7 +171,8 @@ const requireRole = (...roles) => (req, res, next) => {
 
 // POST /api/auth/login — validate credentials from DB users table
 app.post('/api/auth/login', async (req, res) => {
-    const { username, password } = req.body || {};
+    const username = req.body?.username?.trim();
+    const password = req.body?.password;
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required.' });
     }
@@ -891,7 +892,8 @@ app.get('/api/users', requireAdmin, async (req, res) => {
 
 // POST /api/users — create a new user (admin only)
 app.post('/api/users', requireAdmin, async (req, res) => {
-    const { username, password, role } = req.body || {};
+    const username = req.body?.username?.trim();
+    const { password, role } = req.body;
     const validRoles = ['admin', 'supervisor', 'operator'];
 
     if (!username || !password || !role) {

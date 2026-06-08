@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Users, Plus, Edit2, Trash2, X, RefreshCcw, Check, Save } from 'lucide-react';
+import { Shield, Users, Plus, Edit2, Trash2, X, RefreshCcw, Check, Save, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UsersManagement = () => {
@@ -14,6 +14,7 @@ const UsersManagement = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({ username: '', password: '', role: 'operator', status: 'active' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Confirmation modal (replaces window.confirm)
   const [confirmModal, setConfirmModal] = useState(null); // { id, username }
@@ -268,14 +269,24 @@ const UsersManagement = () => {
               </div>
               <div className="form-group">
                 <label>{editingUser ? 'Nueva Contraseña (dejar en blanco para no cambiar)' : 'Contraseña'}</label>
-                <input 
-                  type="password" 
-                  className="modern-input" 
-                  value={formData.password} 
-                  onChange={e => setFormData({...formData, password: e.target.value})} 
-                  required={!editingUser} 
-                  minLength={6}
-                />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    className="modern-input" 
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                    required={!editingUser} 
+                    minLength={6}
+                    style={{ width: '100%', paddingRight: '40px' }}
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="form-group">
                 <label>Rol del Sistema</label>
