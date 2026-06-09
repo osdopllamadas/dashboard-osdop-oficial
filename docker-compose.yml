@@ -7,7 +7,7 @@ services:
       ULTRAVOX_API_KEY: "${ULTRAVOX_API_KEY}"
       PORT: "3000"
     volumes:
-      - ./data:/app/data
+      - dashboard_data:/app/data
     networks:
       - mateo
     deploy:
@@ -25,3 +25,6 @@ services:
 networks:
   mateo:
     external: true
+
+volumes:
+  dashboard_data:
