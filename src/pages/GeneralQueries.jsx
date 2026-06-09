@@ -11,7 +11,8 @@ const GeneralQueries = () => {
     const [data, setData] = useState({
         kpis: { total: 0, exitosas: 0, noExisten: 0 },
         chartData: [],
-        recentQueries: []
+        recentQueries: [],
+        unresolvedQueries: []
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -53,49 +54,58 @@ const GeneralQueries = () => {
             )}
 
             {/* KPIs */}
-            <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="glass p-2 br-lg stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#94a3b8' }}>
-                        <FolderSearch size={18} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>Consultas Totales</span>
+            <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
+                <div className="futuristic-card">
+                    <div className="glow-bar" style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', boxShadow: '0 0 15px #3b82f6' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#94a3b8' }}>
+                        <div style={{ padding: '0.5rem', background: 'rgba(59,130,246,0.1)', borderRadius: '8px' }}>
+                            <FolderSearch size={20} color="#3b82f6" />
+                        </div>
+                        <span className="kpi-title">Consultas Totales</span>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#f8fafc' }}>
-                        {loading ? <RefreshCw className="spin-icon" size={24} /> : data.kpis.total}
-                    </div>
-                </div>
-
-                <div className="glass p-2 br-lg stat-card" style={{ borderTop: '3px solid #10b981' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#10b981' }}>
-                        <CheckCircle size={18} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>Realizadas con Éxito</span>
-                    </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#10b981' }}>
-                        {loading ? <RefreshCw className="spin-icon" size={24} /> : data.kpis.exitosas}
+                    <div className="kpi-value">
+                        {loading ? <RefreshCw className="spin-icon" size={32} /> : data.kpis.total}
                     </div>
                 </div>
 
-                <div className="glass p-2 br-lg stat-card" style={{ borderTop: '3px solid #ef4444' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#ef4444' }}>
-                        <XCircle size={18} />
-                        <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>No existen en BD de IA</span>
+                <div className="futuristic-card">
+                    <div className="glow-bar" style={{ background: 'linear-gradient(90deg, #10b981, #059669)', boxShadow: '0 0 15px #10b981' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#10b981' }}>
+                        <div style={{ padding: '0.5rem', background: 'rgba(16,185,129,0.1)', borderRadius: '8px' }}>
+                            <CheckCircle size={20} color="#10b981" />
+                        </div>
+                        <span className="kpi-title">Realizadas con Éxito</span>
                     </div>
-                    <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#ef4444' }}>
-                        {loading ? <RefreshCw className="spin-icon" size={24} /> : data.kpis.noExisten}
+                    <div className="kpi-value">
+                        {loading ? <RefreshCw className="spin-icon" size={32} /> : data.kpis.exitosas}
+                    </div>
+                </div>
+
+                <div className="futuristic-card">
+                    <div className="glow-bar" style={{ background: 'linear-gradient(90deg, #ef4444, #b91c1c)', boxShadow: '0 0 15px #ef4444' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ef4444' }}>
+                        <div style={{ padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: '8px' }}>
+                            <XCircle size={20} color="#ef4444" />
+                        </div>
+                        <span className="kpi-title">No existen en BD</span>
+                    </div>
+                    <div className="kpi-value">
+                        {loading ? <RefreshCw className="spin-icon" size={32} /> : data.kpis.noExisten}
                     </div>
                 </div>
             </div>
 
             {/* Chart and Table Section */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2.5rem' }}>
                 {/* Chart */}
-                <div className="glass p-2 br-lg">
-                    <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Activity size={18} className="text-primary" />
+                <div className="futuristic-card">
+                    <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', fontWeight: '700' }}>
+                        <Activity size={22} className="text-primary" />
                         Tipos de Consultas
                     </h3>
-                    <div style={{ height: '300px' }}>
+                    <div style={{ height: '420px' }}>
                         {loading ? (
-                            <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                 <RefreshCw className="spin-icon text-muted" size={24} />
                             </div>
                         ) : data.chartData.length > 0 ? (
@@ -104,26 +114,50 @@ const GeneralQueries = () => {
                                     <Pie
                                         data={data.chartData}
                                         cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={90}
-                                        paddingAngle={5}
+                                        cy="45%"
+                                        innerRadius={75}
+                                        outerRadius={105}
+                                        paddingAngle={4}
                                         dataKey="value"
-                                        stroke="none"
+                                        stroke="rgba(0,0,0,0.2)"
+                                        strokeWidth={2}
                                     >
                                         {data.chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ filter: `drop-shadow(0px 4px 6px ${COLORS[index % COLORS.length]}40)` }} />
                                         ))}
                                     </Pie>
                                     <Tooltip 
-                                        contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#e2e8f0' }}
+                                        contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
+                                        itemStyle={{ color: '#e2e8f0', fontWeight: '500' }}
                                     />
-                                    <Legend verticalAlign="bottom" height={36}/>
+                                    <Legend 
+                                        content={(props) => {
+                                            const { payload } = props;
+                                            return (
+                                                <ul style={{ listStyle: 'none', padding: '0', margin: 0, maxHeight: '160px', overflowY: 'auto', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scroll">
+                                                    {payload.map((entry, index) => (
+                                                        <li key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', padding: '6px', borderRadius: '6px', transition: 'background 0.2s', cursor: 'default' }} className="legend-item">
+                                                            <span style={{ width: '12px', height: '12px', backgroundColor: entry.color, borderRadius: '50%', marginRight: '10px', flexShrink: 0, boxShadow: `0 0 8px ${entry.color}` }}></span>
+                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500', flexGrow: 1 }} title={entry.value}>
+                                                                {entry.value}
+                                                            </span>
+                                                            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', marginLeft: '10px' }}>
+                                                                {entry.payload.value}
+                                                            </span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            );
+                                        }}
+                                        layout="horizontal" 
+                                        verticalAlign="bottom" 
+                                        align="center"
+                                        wrapperStyle={{ paddingTop: '20px' }}
+                                    />
                                 </PieChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                            <div style={{ display: 'flex', height: '100%', width: '100%', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
                                 No hay datos suficientes
                             </div>
                         )}
@@ -131,42 +165,46 @@ const GeneralQueries = () => {
                 </div>
 
                 {/* Table */}
-                <div className="glass p-2 br-lg">
-                    <h3 style={{ marginBottom: '1rem' }}>Últimas Consultas Registradas</h3>
-                    <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <div className="futuristic-card">
+                    <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: '700' }}>Últimas Consultas Registradas</h3>
+                    <div className="table-responsive custom-scroll" style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
                         <table className="modern-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                             <thead>
-                                <tr style={{ borderBottom: '1px solid #1e293b', color: '#94a3b8' }}>
-                                    <th style={{ padding: '0.75rem', fontWeight: 600 }}>Fecha</th>
-                                    <th style={{ padding: '0.75rem', fontWeight: 600 }}>Afiliado</th>
-                                    <th style={{ padding: '0.75rem', fontWeight: 600 }}>Tipo de Consulta</th>
-                                    <th style={{ padding: '0.75rem', fontWeight: 600 }}>Estado</th>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Afiliado</th>
+                                    <th>Tipo de Consulta</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}><RefreshCw className="spin-icon text-muted" /></td></tr>
+                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem' }}><RefreshCw className="spin-icon text-muted" size={32} /></td></tr>
                                 ) : data.recentQueries.length === 0 ? (
-                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No hay consultas registradas.</td></tr>
+                                    <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No hay consultas registradas.</td></tr>
                                 ) : (
                                     data.recentQueries.map((q) => (
-                                        <tr key={q.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                                            <td style={{ padding: '0.75rem', fontSize: '0.85rem', color: '#94a3b8' }}>
+                                        <tr key={q.id}>
+                                            <td style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>
                                                 {new Date(q.created_at).toLocaleDateString()}
                                             </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ fontWeight: '500', color: '#e2e8f0' }}>{q.nombre || 'Desconocido'}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{q.telefono}</div>
+                                            <td>
+                                                <div style={{ fontWeight: '600', color: '#f8fafc' }}>{q.nombre || 'Desconocido'}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{q.telefono}</div>
                                             </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <span style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>
-                                                    {q['tipo de consulta']}
+                                            <td>
+                                                <span className="badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }}>
+                                                    {q['motivo de consulta'] || q['tipo de consulta'] || 'Sin clasificar'}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '0.75rem' }}>
-                                                <span style={{ 
-                                                    color: q['estado de la llamada']?.includes('Exitosa') ? '#10b981' : 
-                                                           q['estado de la llamada']?.toLowerCase().includes('no exist') ? '#ef4444' : '#f59e0b' 
+                                            <td>
+                                                <span className="badge" style={{ 
+                                                    background: q['estado de la llamada']?.includes('Exitosa') ? 'rgba(16,185,129,0.15)' : 
+                                                                q['estado de la llamada']?.toLowerCase().includes('no exist') ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                                                    color: q['estado de la llamada']?.includes('Exitosa') ? '#34d399' : 
+                                                           q['estado de la llamada']?.toLowerCase().includes('no exist') ? '#f87171' : '#fbbf24',
+                                                    border: `1px solid ${q['estado de la llamada']?.includes('Exitosa') ? 'rgba(16,185,129,0.3)' : 
+                                                            q['estado de la llamada']?.toLowerCase().includes('no exist') ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}`
                                                 }}>
                                                     {q['estado de la llamada']}
                                                 </span>
@@ -180,13 +218,134 @@ const GeneralQueries = () => {
                 </div>
             </div>
 
+            {/* Unresolved Queries Section */}
+            <div className="futuristic-card" style={{ marginTop: '2.5rem' }}>
+                <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: '700', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <XCircle size={22} color="#ef4444" />
+                    Consultas No Resueltas por Falta de Base de Conocimientos
+                </h3>
+                <div className="table-responsive custom-scroll" style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+                    <table className="modern-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Afiliado</th>
+                                <th>Motivo de Finalización</th>
+                                <th>Resumen / Contexto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem' }}><RefreshCw className="spin-icon text-muted" size={32} /></td></tr>
+                            ) : (!data.unresolvedQueries || data.unresolvedQueries.length === 0) ? (
+                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>No hay consultas sin resolver por este motivo.</td></tr>
+                            ) : (
+                                data.unresolvedQueries.map((q) => (
+                                    <tr key={q.id}>
+                                        <td style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500', width: '120px' }}>
+                                            {new Date(q.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td style={{ width: '200px' }}>
+                                            <div style={{ fontWeight: '600', color: '#f8fafc' }}>{q.nombre || 'Desconocido'}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>{q.telefono}</div>
+                                        </td>
+                                        <td style={{ width: '250px' }}>
+                                            <span className="badge" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', whiteSpace: 'normal', display: 'inline-block', textAlign: 'center' }}>
+                                                {q['motivo de finalizacion'] || 'Desconocido'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', color: '#cbd5e1', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                                                {q['resumen de llamada'] || q.summary || 'No hay resumen disponible para esta llamada.'}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <style>{`
-                .stat-card {
-                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                .futuristic-card {
+                    position: relative;
+                    background: rgba(16, 20, 45, 0.4);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 16px;
+                    padding: 1.5rem;
+                    overflow: hidden;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
                 }
-                .stat-card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+                .futuristic-card:hover {
+                    transform: translateY(-4px);
+                    border-color: rgba(255, 255, 255, 0.15);
+                    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+                }
+                .glow-bar {
+                    position: absolute;
+                    top: 0; left: 0; right: 0; height: 3px;
+                }
+                .kpi-title {
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    letter-spacing: 0.05em;
+                    text-transform: uppercase;
+                }
+                .kpi-value {
+                    font-size: 3.2rem;
+                    font-weight: 800;
+                    background: linear-gradient(135deg, #fff, #94a3b8);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    margin-top: 0.5rem;
+                }
+                .modern-table th {
+                    text-transform: uppercase;
+                    font-size: 0.75rem;
+                    letter-spacing: 0.1em;
+                    color: #64748b;
+                    padding: 1rem;
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                }
+                .modern-table td {
+                    padding: 1rem;
+                    border-bottom: 1px solid rgba(255,255,255,0.02);
+                }
+                .modern-table tr {
+                    transition: all 0.3s ease;
+                }
+                .modern-table tbody tr:hover {
+                    background: rgba(255,255,255,0.03);
+                    transform: translateX(4px);
+                }
+                .badge {
+                    padding: 0.35rem 0.85rem;
+                    border-radius: 9999px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: inline-block;
+                }
+                .legend-item:hover {
+                    background: rgba(255,255,255,0.05);
+                }
+                .custom-scroll::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scroll::-webkit-scrollbar-thumb {
+                    background-color: rgba(255,255,255,0.1);
+                    border-radius: 10px;
+                }
+                .custom-scroll::-webkit-scrollbar-thumb:hover {
+                    background-color: rgba(255,255,255,0.2);
                 }
             `}</style>
         </div>

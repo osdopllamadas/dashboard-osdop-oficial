@@ -723,15 +723,13 @@ app.get('/api/consultas_generales', requireAuth, async (req, res) => {
         // Procesar datos para los KPIs
         const totalConsultas = data.length;
         const exitosas = data.filter(d => d['estado de la llamada'] === 'Exitosa').length;
-        const noExisten = data.filter(d => {
-            const estado = d['estado de la llamada'] ? d['estado de la llamada'].toLowerCase() : '';
-            return estado.includes('no exist') || estado.includes('desconocid');
-        }).length;
+        const unresolvedQueries = data.filter(d => d['motivo de finalizacion'] && d['motivo de finalizacion'].includes('Consulta fuera de base de conocimiento'));
+        const noExisten = unresolvedQueries.length;
 
         // Agrupar tipos de consultas para el gráfico
         const tiposMap = {};
         data.forEach(item => {
-            let tipo = item['tipo de consulta'] || 'Sin clasificar';
+            let tipo = item['motivo de consulta'] || item['tipo de consulta'] || 'Sin clasificar';
             tiposMap[tipo] = (tiposMap[tipo] || 0) + 1;
         });
 
@@ -747,7 +745,8 @@ app.get('/api/consultas_generales', requireAuth, async (req, res) => {
                 noExisten: noExisten
             },
             chartData: chartData,
-            recentQueries: data // enviamos toda la lista (o las primeras) para la tabla inferior
+            recentQueries: data, // enviamos toda la lista (o las primeras) para la tabla inferior
+            unresolvedQueries: unresolvedQueries // Consultas no resueltas por falta de base de conocimientos
         });
     } catch (err) {
         console.error('[API] Error en /api/consultas_generales:', err.message);
