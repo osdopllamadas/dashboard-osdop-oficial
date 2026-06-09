@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine as build
+FROM node:22-alpine as build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 # Copiamos la web construida
 COPY --from=build /app/dist ./dist
