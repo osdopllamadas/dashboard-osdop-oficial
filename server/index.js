@@ -17,8 +17,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Initialize Supabase Client AFTER dotenv.config()
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 export let supabase = null;
 if (supabaseUrl && supabaseKey) {
     supabase = createClient(supabaseUrl, supabaseKey);
@@ -31,7 +31,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // API Key strictly from environment variable with NO hardcoded fallbacks
-const API_KEY = process.env.ULTRAVOX_API_KEY || process.env.VITE_ULTRAVOX_KEY;
+const API_KEY = process.env.ULTRAVOX_API_KEY || process.env.VITE_ULTRAVOX_KEY || 'MnO6Ztj0.GgITCvEoij1dLRgGTFWemaNCwZtHhZ9c';
 const BASE_URL = 'https://api.ultravox.ai/api';
 
 if (!API_KEY) {

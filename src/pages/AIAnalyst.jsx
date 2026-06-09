@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Brain, Zap, MessageSquare, Lightbulb, ShieldCheck, Target, RefreshCw, CheckCircle, AlertTriangle, Activity, Clock, PhoneOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 const AIAnalyst = () => {
     const { token } = useAuth();

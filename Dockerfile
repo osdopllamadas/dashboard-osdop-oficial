@@ -15,6 +15,7 @@ COPY --from=build /app/dist ./dist
 COPY server/package*.json ./
 RUN npm install --only=production
 COPY server/index.js ./
+COPY .env ./
 # El servidor ahora estará en /app/index.js y la web en /app/dist
 EXPOSE 3000
 CMD ["node", "index.js"]

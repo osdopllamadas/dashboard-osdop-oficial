@@ -21,7 +21,7 @@ import FilterBar from '../components/FilterBar';
 import { useCalls } from '../context/CallContext';
 import { useAuth } from '../context/AuthContext';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.PROD ? '' : (import.meta.env.VITE_API_URL || 'http://localhost:3000');
 
 const RealTime = () => {
   const { allCalls, isFetchingGlobal, error, filters, setFilters } = useCalls();
