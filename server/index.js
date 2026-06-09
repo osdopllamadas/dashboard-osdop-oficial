@@ -761,7 +761,7 @@ app.get('/api/dashboard-summary', async (req, res) => {
         const agentsList = await dbAll(`SELECT id, name FROM agents`);
         
         // Fetch up to 1000 calls ordered by creation descending to preserve server/client memory footprint
-        const callsList = await dbAll(`SELECT * FROM calls ORDER BY created DESC LIMIT 1000`);
+        const callsList = await dbAll(`SELECT * FROM calls ORDER BY created DESC`);
 
         // Fetch daily usage
         const dailyList = await dbAll(`SELECT date, callsCount as count, billedMinutes FROM usage_daily ORDER BY date ASC`);
