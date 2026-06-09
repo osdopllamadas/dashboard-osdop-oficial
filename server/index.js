@@ -41,7 +41,7 @@ if (!API_KEY) {
 // Secure CORS configuration
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.includes('mateoia.store')) {
             callback(null, true);
         } else {
             callback(new Error('Blocked by CORS policy (Unauthorized Origin)'));
