@@ -1,4 +1,3 @@
-version: '3.3'
 services:
   app:
     image: dashboard-osdop:latest
@@ -7,6 +6,8 @@ services:
     environment:
       ULTRAVOX_API_KEY: "${ULTRAVOX_API_KEY}"
       PORT: "3000"
+    volumes:
+      - ./data:/app/data
     networks:
       - mateo
     deploy:
