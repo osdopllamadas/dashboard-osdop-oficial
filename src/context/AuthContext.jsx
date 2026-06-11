@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
             })
             .then(data => {
                 if (data && data.username) {
-                    setUser({ username: data.username, role: data.role });
+                    setUser({ username: data.username, role: data.role, permissions: data.permissions || [] });
                 }
             })
             .catch(() => {
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
             }
             localStorage.setItem('ultra_token', data.token);
             setToken(data.token);
-            setUser({ username: data.username, role: data.role });
+            setUser({ username: data.username, role: data.role, permissions: data.permissions || [] });
             return true;
         } catch (err) {
             console.error('[Auth] Login request failed:', err);

@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, requiredPath }) => {
   const { user, authLoading } = useAuth();
 
   // While validating the stored token server-side, show a neutral loading screen
@@ -58,7 +58,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (!user) return <Navigate to="/login" />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" />;
+  
+  // Role-based dynamic permissions
+  if (requiredPath && user.permissions) {
+    if (!user.permissions.includes(requiredPath)) {
+        return <Navigate to="/" />;
+    }
+  }
 
   return children;
 };
@@ -88,49 +94,49 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPath="/">
                   <AppLayout><RealTime /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/tiempo-real" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPath="/tiempo-real">
                   <AppLayout><LiveActivity /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/historial" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPath="/historial">
                   <AppLayout><Historial /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/consultas" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPath="/consultas">
                   <AppLayout><GeneralQueries /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/minutos" element={
-                <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                <ProtectedRoute requiredPath="/minutos">
                   <AppLayout><Minutes /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/analista-ia" element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute requiredPath="/analista-ia">
                   <AppLayout><AIAnalyst /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/afiliados" element={
-                <ProtectedRoute>
+                <ProtectedRoute requiredPath="/afiliados">
                   <AppLayout><AffiliatesCRM /></AppLayout>
                 </ProtectedRoute>
               } />
 
               <Route path="/usuarios" element={
-                <ProtectedRoute allowedRoles={['admin']}>
+                <ProtectedRoute requiredPath="/usuarios">
                   <AppLayout><UsersManagement /></AppLayout>
                 </ProtectedRoute>
               } />

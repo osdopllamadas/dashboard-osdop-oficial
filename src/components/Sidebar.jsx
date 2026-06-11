@@ -58,8 +58,8 @@ const Sidebar = () => {
 
       <nav className="sidebar-nav">
         {menuItems.map((item, index) => {
-          if (item.allowedRoles && !item.allowedRoles.includes(user?.role)) return null;
-          if (item.adminOnly && user?.role !== 'admin') return null; // fallback
+          if (item.path !== '/' && user?.permissions && !user.permissions.includes(item.path)) return null;
+          if (item.path === '/' && user?.permissions && !user.permissions.includes('/')) return null;
 
           return (
             <React.Fragment key={item.name}>
@@ -78,15 +78,7 @@ const Sidebar = () => {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="nav-item">
-          <Globe size={20} />
-          {!collapsed && <span>English</span>}
-          {!collapsed && <span className="lang-badge">ES</span>}
-        </div>
-        <div className="nav-item">
-          <Settings size={20} />
-          {!collapsed && <span>Configuración</span>}
-        </div>
+
         <div className="nav-item" onClick={() => setCollapsed(!collapsed)}>
           <ChevronLeft size={20} className={collapsed ? 'rotate-180' : ''} />
           {!collapsed && <span>Colapsar</span>}

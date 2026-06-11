@@ -9,6 +9,7 @@ const AffiliatesCRM = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState(''); // '' = all
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(null); // id of the record being updated
+  const [activeTab, setActiveTab] = useState('new'); // 'new' or 'incomplete'
 
   const loadData = async () => {
     setIsLoading(true);
@@ -71,7 +72,7 @@ const AffiliatesCRM = () => {
     <div className="page-container animate-fade-in">
       <div className="header-row">
         <header className="page-header">
-          <h1>LEADS <span className="text-secondary-gradient">INTERESADOS EN AFILIARSE</span></h1>
+          <h1>LLAMADAS <span className="text-secondary-gradient">DE AFILIADOS EN TRAMITE</span></h1>
           <p>Gestión de leads y potenciales afiliaciones detectadas por IA.</p>
         </header>
         <div className="header-actions">
@@ -126,6 +127,29 @@ const AffiliatesCRM = () => {
 
       {/* MAIN TABLE */}
       <div className="table-container-modern glass custom-scrollbar" style={{ marginTop: '2rem' }}>
+        
+        {/* TABS */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+          <button 
+            onClick={() => setActiveTab('new')}
+            style={{ background: 'transparent', border: 'none', color: activeTab === 'new' ? '#3b82f6' : '#94a3b8', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: activeTab === 'new' ? '2px solid #3b82f6' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Nuevos Interesados
+          </button>
+          <button 
+            onClick={() => setActiveTab('incomplete')}
+            style={{ background: 'transparent', border: 'none', color: activeTab === 'incomplete' ? '#f59e0b' : '#94a3b8', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: activeTab === 'incomplete' ? '2px solid #f59e0b' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Altas Incompletas
+          </button>
+          <button 
+            onClick={() => setActiveTab('existing')}
+            style={{ background: 'transparent', border: 'none', color: activeTab === 'existing' ? '#10b981' : '#94a3b8', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: activeTab === 'existing' ? '2px solid #10b981' : '2px solid transparent', transition: 'all 0.2s' }}
+          >
+            Gestiones de Afiliados
+          </button>
+        </div>
+
         {isLoading ? (
           <div className="loading-state">
             <RefreshCcw size={32} className="spin-icon" style={{ color: '#3b82f6', marginBottom: '1rem' }} />
@@ -140,20 +164,19 @@ const AffiliatesCRM = () => {
                 <th>Teléfono</th>
                 <th>Trámite</th>
                 <th>Motivo Detectado</th>
-                <th>Interés</th>
                 <th>Gestión</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {affiliations.length === 0 ? (
+              {affiliations.filter(aff => aff.affiliation_type === activeTab).length === 0 ? (
                 <tr>
                   <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    No hay registros de afiliados que coincidan con los filtros.
+                    No hay registros de afiliados en esta categoría que coincidan con los filtros.
                   </td>
                 </tr>
               ) : (
-                affiliations.map(aff => {
+                affiliations.filter(aff => aff.affiliation_type === activeTab).map(aff => {
                   const sColor = getStatusColor(aff.status);
                   const isMissing = aff.missing_info && aff.interested === 1;
 
@@ -185,15 +208,6 @@ const AffiliatesCRM = () => {
                           <div className="text-sm text-muted" style={{ marginTop: '4px', fontStyle: 'italic' }}>
                             {aff.motivo_finalizacion}
                           </div>
-                        )}
-                      </td>
-                      <td>
-                        {aff.interested === 1 ? (
-                          <span className="badge-interest"> Interesado</span>
-                        ) : (
-                          <span className="text-muted text-sm">
-                            {aff.estado_llamada || 'No explícito'}
-                          </span>
                         )}
                       </td>
                       <td>

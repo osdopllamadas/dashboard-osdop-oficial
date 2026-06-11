@@ -195,8 +195,16 @@ app.post('/api/auth/login', async (req, res) => {
             exp: Date.now() + 1000 * 60 * 60 * 8 // 8-hour session
         });
 
+        let permissions = [];
+        try {
+            const roleRow = await dbGet(`SELECT permissions_json FROM role_permissions WHERE role = ?`, [userRow.role]);
+            if (roleRow) permissions = JSON.parse(roleRow.permissions_json);
+        } catch (e) {
+            console.error('[Auth] Failed to load role permissions');
+        }
+
         console.log(`[Auth] ✅ Login success: ${userRow.username} (${userRow.role})`);
-        res.json({ token, username: userRow.username, role: userRow.role });
+        res.json({ token, username: userRow.username, role: userRow.role, permissions });
     } catch (err) {
         console.error('[Auth] Login DB error:', err.message);
         res.status(500).json({ error: 'Authentication service error.' });
@@ -214,7 +222,18 @@ app.get('/api/auth/validate', (req, res) => {
     if (!payload) {
         return res.status(401).json({ error: 'Invalid or expired token.' });
     }
-    res.json({ id: payload.id, username: payload.username, role: payload.role });
+    
+    // Asign permissions on validate
+    dbGet(`SELECT permissions_json FROM role_permissions WHERE role = ?`, [payload.role])
+        .then(roleRow => {
+            let permissions = [];
+            if (roleRow) permissions = JSON.parse(roleRow.permissions_json);
+            res.json({ id: payload.id, username: payload.username, role: payload.role, permissions });
+        })
+        .catch(err => {
+            console.error('[Auth] Validate failed to fetch permissions');
+            res.json({ id: payload.id, username: payload.username, role: payload.role, permissions: [] });
+        });
 });
 
 // --- DATABASE PERSISTENCE LAYER (SQLITE3) ---
@@ -373,10 +392,31 @@ const initTables = async () => {
             )
         `);
 
+        await dbRun(`
+            CREATE TABLE IF NOT EXISTS role_permissions (
+                role TEXT PRIMARY KEY,
+                permissions_json TEXT NOT NULL
+            )
+        `);
+
         console.log('[Database] ✅ SQLite Database Schema initialized successfully (Fase 4 tables included).');
 
         // Seed default admin user on first run
         await seedDefaultAdmin();
+
+        // Seed default role permissions
+        const defaultPerms = [
+            { role: 'admin', perms: ["/", "/afiliados", "/tiempo-real", "/historial", "/consultas", "/minutos", "/usuarios", "/analista-ia"] },
+            { role: 'supervisor', perms: ["/", "/afiliados", "/tiempo-real", "/historial", "/consultas", "/minutos"] },
+            { role: 'operator', perms: ["/", "/afiliados", "/tiempo-real", "/historial", "/consultas"] }
+        ];
+
+        for (const dp of defaultPerms) {
+            const existing = await dbGet(`SELECT role FROM role_permissions WHERE role = ?`, [dp.role]);
+            if (!existing) {
+                await dbRun(`INSERT INTO role_permissions (role, permissions_json) VALUES (?, ?)`, [dp.role, JSON.stringify(dp.perms)]);
+            }
+        }
 
         // Safely trigger aggregator AFTER database is confirmed online
         startAggregator();
@@ -501,7 +541,7 @@ const analyzeCallForAffiliation = async (normalizedCall) => {
     // --- Detect interest in affiliation ---
     const affiliationKeywords = [
         'afili', 'asociar', 'inscrib', 'registrar', 'unirme', 'quiero ser socio',
-        'quiero anotarme', 'incorporarme', 'alta como', 'darme de alta'
+        'quiero anotarme', 'incorporarme', 'alta como'
     ];
     const interested = affiliationKeywords.some(k => text.includes(k)) ? 1 : 0;
 
@@ -720,17 +760,66 @@ app.get('/api/consultas_generales', requireAuth, async (req, res) => {
             return res.status(500).json({ error: 'Error consultando la base de datos de consultas.' });
         }
 
+        // Función para unificar y categorizar los tipos de consultas
+        const categorizeQuery = (rawText) => {
+            const text = (rawText || '').toLowerCase();
+            
+            if (text.includes('cartilla')) return 'Cartilla Médica';
+            if (text.includes('afiliaci') || text.includes('afiliar') || text.includes('alta') || text.includes('baja')) return 'Trámites de Afiliación';
+            if (text.includes('cobertura') || text.includes('autorizaci') || text.includes('estudio') || text.includes('práctica') || text.includes('prestacion')) return 'Coberturas y Autorizaciones';
+            if (text.includes('turno') || text.includes('atención') || text.includes('médico') || text.includes('medico')) return 'Turnos y Atención Médica';
+            if (text.includes('credencial')) return 'Credencial';
+            if (text.includes('reintegro') || text.includes('pago') || text.includes('cuota') || text.includes('factura') || text.includes('deuda')) return 'Pagos y Facturación';
+            if (text.includes('prepaga') || text.includes('derivaci') || text.includes('cambio')) return 'Derivaciones y Prepagas';
+            if (text.includes('farmacia') || text.includes('medicamento') || text.includes('receta')) return 'Farmacia y Medicamentos';
+            
+            return 'Otras Consultas Generales';
+        };
+
+        // Aplicar los criterios estrictos a los datos para la tabla y gráfico
+        const dataStrict = data.map(d => {
+            const estado = (d['estado de la llamada'] || '').toLowerCase();
+            const motivoFin = (d['motivo de finalizacion'] || '').toLowerCase();
+            
+            const noTransferida = estado !== 'derivada' && !motivoFin.includes('transferid');
+            const noCortada = !motivoFin.includes('corte') && !motivoFin.includes('colgó');
+            const esExitosa = estado === 'exitosa' || motivoFin.includes('resuelt') || motivoFin.includes('satisfech');
+            
+            let estadoEstricto = d['estado de la llamada'];
+            
+            if (estado === 'exitosa' && (!noTransferida || !noCortada || !esExitosa)) {
+                if (!noTransferida) estadoEstricto = 'Derivada';
+                else if (!noCortada) estadoEstricto = 'Fallida (Corte)';
+                else estadoEstricto = 'Fallida';
+            }
+            
+            const rawTipo = d['motivo de consulta'] || d['tipo de consulta'] || 'Sin clasificar';
+            const tipoAgrupado = rawTipo === 'Sin clasificar' ? 'Sin clasificar' : categorizeQuery(rawTipo);
+
+            return {
+                ...d,
+                'estado de la llamada': estadoEstricto,
+                tipoAgrupado
+            };
+        });
+
         // Procesar datos para los KPIs
-        const totalConsultas = data.length;
-        const exitosas = data.filter(d => d['estado de la llamada'] === 'Exitosa').length;
-        const unresolvedQueries = data.filter(d => d['motivo de finalizacion'] && d['motivo de finalizacion'].includes('Consulta fuera de base de conocimiento'));
+        const totalConsultas = dataStrict.length;
+        // Criterios estrictos para llamadas exitosas según lo solicitado por el usuario:
+        // 1. No fue transferida (Derivada)
+        // 2. No se cortó de la nada (Corte de llamada)
+        // 3. Fue resuelta o marcada como Exitosa por la IA
+        const exitosas = dataStrict.filter(d => {
+            const estado = (d['estado de la llamada'] || '').toLowerCase();
+            return estado === 'exitosa';
+        }).length;
+        const unresolvedQueries = dataStrict.filter(d => d['motivo de finalizacion'] && d['motivo de finalizacion'].includes('Consulta fuera de base de conocimiento'));
         const noExisten = unresolvedQueries.length;
 
-        // Agrupar tipos de consultas para el gráfico
+        // Agrupar tipos de consultas para el gráfico usando la categorización unificada
         const tiposMap = {};
-        data.forEach(item => {
-            let tipo = item['motivo de consulta'] || item['tipo de consulta'] || 'Sin clasificar';
-            tiposMap[tipo] = (tiposMap[tipo] || 0) + 1;
+        dataStrict.forEach(item => {
+            tiposMap[item.tipoAgrupado] = (tiposMap[item.tipoAgrupado] || 0) + 1;
         });
 
         const chartData = Object.keys(tiposMap).map(key => ({
@@ -742,10 +831,11 @@ app.get('/api/consultas_generales', requireAuth, async (req, res) => {
             kpis: {
                 total: totalConsultas,
                 exitosas: exitosas,
+                fallidas: dataStrict.filter(d => (d['estado de la llamada'] || '').includes('Fallida')).length,
                 noExisten: noExisten
             },
             chartData: chartData,
-            recentQueries: data, // enviamos toda la lista (o las primeras) para la tabla inferior
+            recentQueries: dataStrict, // enviamos toda la lista (o las primeras) para la tabla inferior
             unresolvedQueries: unresolvedQueries // Consultas no resueltas por falta de base de conocimientos
         });
     } catch (err) {
@@ -1016,6 +1106,49 @@ app.get('/api/audit-logs', requireAdmin, async (req, res) => {
     }
 });
 
+// --- ROLES & PERMISSIONS ENDPOINTS ---
+
+app.get('/api/roles/permissions', requireAuth, async (req, res) => {
+    try {
+        const rows = await dbAll(`SELECT role, permissions_json FROM role_permissions`);
+        const result = {};
+        for (const row of rows) {
+            result[row.role] = JSON.parse(row.permissions_json);
+        }
+        res.json(result);
+    } catch (err) {
+        console.error('[Permissions] GET /api/roles/permissions error:', err.message);
+        res.status(500).json({ error: 'Failed to fetch permissions.' });
+    }
+});
+
+app.put('/api/roles/permissions', requireAdmin, async (req, res) => {
+    try {
+        const { role, permissions } = req.body;
+        if (!role || !Array.isArray(permissions)) {
+            return res.status(400).json({ error: 'Invalid payload' });
+        }
+        
+        const existing = await dbGet(`SELECT role FROM role_permissions WHERE role = ?`, [role]);
+        if (existing) {
+            await dbRun(`UPDATE role_permissions SET permissions_json = ? WHERE role = ?`, [JSON.stringify(permissions), role]);
+        } else {
+            await dbRun(`INSERT INTO role_permissions (role, permissions_json) VALUES (?, ?)`, [role, JSON.stringify(permissions)]);
+        }
+
+        // Audit log
+        await dbRun(
+            `INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)`,
+            [req.user.id, 'UPDATE_PERMISSIONS', `Updated permissions for role: ${role}`]
+        );
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('[Permissions] PUT /api/roles/permissions error:', err.message);
+        res.status(500).json({ error: 'Failed to update permissions.' });
+    }
+});
+
 // --- AFFILIATIONS CRM ENDPOINTS ---
 
 // GET /api/affiliations — list all affiliation records (all authenticated roles)
@@ -1033,20 +1166,60 @@ app.get('/api/affiliations', requireAuth, async (req, res) => {
         if (error) throw error;
 
         // Map columns to match frontend expectations
-        const mappedData = (data || []).map(row => ({
-            id: row.id,
-            created_at: row.created_at,
-            phone: row.telefono,
-            reason: row['motivo consulta'],
-            interested: row['estado de llamada'] === 'Exitosa' || (row['motivo consulta'] && row['motivo consulta'].toLowerCase().includes('interesado')) ? 1 : 0,
-            status: row.crm_status || 'pendiente',
-            nombre: row.nombre,
-            dni: row.dni,
-            localidad: row.localidad,
-            motivo_finalizacion: row['motivo de finalizacion'],
-            estado_llamada: row['estado de llamada'],
-            tipo_tramite: row['tipo de tramite']
-        }));
+        const mappedData = (data || []).map(row => {
+            const motivo = (row['motivo consulta'] || '').toLowerCase();
+            const keywords_new = [
+                'afiliacion online',
+                'afiliación online',
+                'afiliacion presencial',
+                'afiliación presencial'
+            ];
+            
+            const keywords_incomplete = [
+                'nunca se dio de alta',
+                'no complete',
+                'no completé',
+                'falta darme de alta',
+                'estado de afiliacion',
+                'estado de afiliación'
+            ];
+
+            const keywords_existing = [
+                'familiares',
+                'hijos',
+                'reactivacion',
+                'reactivación',
+                'sin respuesta',
+                'no tiene carnet',
+                'acceso a la app',
+                'monotributista'
+            ];
+            
+            let affType = null;
+            if (keywords_incomplete.some(k => motivo.includes(k))) {
+                affType = 'incomplete';
+            } else if (keywords_existing.some(k => motivo.includes(k))) {
+                affType = 'existing';
+            } else if (keywords_new.some(k => motivo.includes(k))) {
+                affType = 'new';
+            }
+
+            return {
+                id: row.id,
+                created_at: row.created_at,
+                phone: row.telefono,
+                reason: row['motivo consulta'],
+                affiliation_type: affType,
+                status: row.crm_status || 'pendiente',
+                missing_info: row.missing_info || false,
+                nombre: row.nombre || '',
+                dni: row.dni || '',
+                localidad: row.localidad || '',
+                tipo_tramite: row.tipo_tramite || row['tipo de tramite'] || '',
+                motivo_finalizacion: row['motivo de finalizacion'] || '',
+                estado_llamada: row['estado de llamada'] || ''
+            };
+        });
 
         res.json(mappedData);
     } catch (err) {
@@ -1071,12 +1244,48 @@ app.get('/api/affiliations/stats', requireAuth, async (req, res) => {
 
         (data || []).forEach(row => {
             total++;
-            const isInterested = row['estado de llamada'] === 'Exitosa' || (row['motivo consulta'] && row['motivo consulta'].toLowerCase().includes('interesado'));
-            if (isInterested) interested++;
-            const stat = row.crm_status || 'pendiente';
-            if (stat === 'pendiente') pendiente++;
-            if (stat === 'contactado') contactado++;
-            if (stat === 'descartado') descartado++;
+            const motivo = (row['motivo consulta'] || '').toLowerCase();
+            const keywords_new = [
+                'afiliacion online',
+                'afiliación online',
+                'afiliacion presencial',
+                'afiliación presencial'
+            ];
+            
+            const keywords_incomplete = [
+                'nunca se dio de alta',
+                'no complete',
+                'no completé',
+                'falta darme de alta',
+                'estado de afiliacion',
+                'estado de afiliación'
+            ];
+
+            const keywords_existing = [
+                'familiares',
+                'hijos',
+                'reactivacion',
+                'reactivación',
+                'sin respuesta',
+                'no tiene carnet',
+                'acceso a la app',
+                'monotributista'
+            ];
+            
+            let isInterested = false;
+            if (keywords_incomplete.some(k => motivo.includes(k)) || 
+                keywords_existing.some(k => motivo.includes(k)) || 
+                keywords_new.some(k => motivo.includes(k))) {
+                isInterested = true;
+                interested++;
+            }
+            
+            if (isInterested) {
+                const stat = row.crm_status || 'pendiente';
+                if (stat === 'pendiente') pendiente++;
+                if (stat === 'contactado') contactado++;
+                if (stat === 'descartado') descartado++;
+            }
         });
 
         res.json({

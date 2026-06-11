@@ -1,14 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import path from 'path';
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-if (!process.env.VITE_SUPABASE_URL) dotenv.config({ path: '../.env' });
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-const supabase = createClient(
-    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-);
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.error('Missing Supabase credentials');
+    process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function testLogic() {
     console.log('Fetching consultas generales...');
@@ -47,15 +48,14 @@ async function testLogic() {
         
         // Print if it was modified
         if (estadoEstricto !== d['estado de la llamada']) {
-            console.log(`[MODIFICADO] ID: ${d.id}`);
-            console.log(`   Motivo Fin: "${d['motivo de finalizacion']}"`);
-            console.log(`   Original: ${d['estado de la llamada']} -> Nuevo Estado: ${estadoEstricto}\n`);
+            console.log(`[MODIFIED] Motivo Fin: "${d['motivo de finalizacion']}"`);
+            console.log(`   Original: ${d['estado de la llamada']} -> New: ${estadoEstricto}\n`);
         }
     });
 
-    console.log('--- RESUMEN ---');
-    console.log(`Exitosas Originales: ${originalExitosas}`);
-    console.log(`Exitosas Estrictas: ${strictExitosas}`);
+    console.log('--- SUMMARY ---');
+    console.log(`Original Exitosas: ${originalExitosas}`);
+    console.log(`Strict Exitosas: ${strictExitosas}`);
 }
 
 testLogic();

@@ -16,6 +16,14 @@ const GeneralQueries = () => {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const handleCategoryClick = (categoryName) => {
+        if (!categoryName) return;
+        setSelectedCategory(categoryName);
+        setIsModalOpen(true);
+    };
 
     const fetchData = async () => {
         setLoading(true);
@@ -82,6 +90,19 @@ const GeneralQueries = () => {
                 </div>
 
                 <div className="futuristic-card">
+                    <div className="glow-bar" style={{ background: 'linear-gradient(90deg, #f59e0b, #d97706)', boxShadow: '0 0 15px #f59e0b' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#f59e0b' }}>
+                        <div style={{ padding: '0.5rem', background: 'rgba(245,158,11,0.1)', borderRadius: '8px' }}>
+                            <Activity size={20} color="#f59e0b" />
+                        </div>
+                        <span className="kpi-title">Llamadas Fallidas</span>
+                    </div>
+                    <div className="kpi-value">
+                        {loading ? <RefreshCw className="spin-icon" size={32} /> : (data.kpis.fallidas || 0)}
+                    </div>
+                </div>
+
+                <div className="futuristic-card">
                     <div className="glow-bar" style={{ background: 'linear-gradient(90deg, #ef4444, #b91c1c)', boxShadow: '0 0 15px #ef4444' }}></div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ef4444' }}>
                         <div style={{ padding: '0.5rem', background: 'rgba(239,68,68,0.1)', borderRadius: '8px' }}>
@@ -123,7 +144,12 @@ const GeneralQueries = () => {
                                         strokeWidth={2}
                                     >
                                         {data.chartData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} style={{ filter: `drop-shadow(0px 4px 6px ${COLORS[index % COLORS.length]}40)` }} />
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={COLORS[index % COLORS.length]} 
+                                                style={{ filter: `drop-shadow(0px 4px 6px ${COLORS[index % COLORS.length]}40)`, cursor: 'pointer' }}
+                                                onClick={() => handleCategoryClick(entry.name)}
+                                            />
                                         ))}
                                     </Pie>
                                     <Tooltip 
@@ -136,7 +162,12 @@ const GeneralQueries = () => {
                                             return (
                                                 <ul style={{ listStyle: 'none', padding: '0', margin: 0, maxHeight: '160px', overflowY: 'auto', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '4px' }} className="custom-scroll">
                                                     {payload.map((entry, index) => (
-                                                        <li key={`item-${index}`} style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', padding: '6px', borderRadius: '6px', transition: 'background 0.2s', cursor: 'default' }} className="legend-item">
+                                                        <li 
+                                                            key={`item-${index}`} 
+                                                            style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', padding: '6px', borderRadius: '6px', transition: 'background 0.2s', cursor: 'pointer' }} 
+                                                            className="legend-item hover-bg"
+                                                            onClick={() => handleCategoryClick(entry.value)}
+                                                        >
                                                             <span style={{ width: '12px', height: '12px', backgroundColor: entry.color, borderRadius: '50%', marginRight: '10px', flexShrink: 0, boxShadow: `0 0 8px ${entry.color}` }}></span>
                                                             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500', flexGrow: 1 }} title={entry.value}>
                                                                 {entry.value}
@@ -194,7 +225,7 @@ const GeneralQueries = () => {
                                             </td>
                                             <td>
                                                 <span className="badge" style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)' }}>
-                                                    {q['motivo de consulta'] || q['tipo de consulta'] || 'Sin clasificar'}
+                                                    {q.tipoAgrupado || q['motivo de consulta'] || q['tipo de consulta'] || 'Sin clasificar'}
                                                 </span>
                                             </td>
                                             <td>
@@ -267,7 +298,73 @@ const GeneralQueries = () => {
                 </div>
             </div>
 
-            <style>{`
+            {/* Modal de Detalles de Categoría */}
+            {isModalOpen && selectedCategory && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                    <div className="futuristic-card" style={{ width: '90%', maxWidth: '900px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: '2rem', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+                            <h2 style={{ fontSize: '1.5rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <FolderSearch className="text-primary" />
+                                Detalles: {selectedCategory}
+                            </h2>
+                            <button 
+                                onClick={() => setIsModalOpen(false)}
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            >
+                                <XCircle size={28} />
+                            </button>
+                        </div>
+                        
+                        <div className="table-responsive custom-scroll" style={{ overflowY: 'auto', flexGrow: 1 }}>
+                            <table className="modern-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Lead / Teléfono</th>
+                                        <th>Resumen de la Consulta</th>
+                                        <th>Estado Final</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.recentQueries.filter(q => q.tipoAgrupado === selectedCategory).length === 0 ? (
+                                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros específicos para esta categoría.</td></tr>
+                                    ) : (
+                                        data.recentQueries.filter(q => q.tipoAgrupado === selectedCategory).map((q) => (
+                                            <tr key={q.id}>
+                                                <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{new Date(q.created_at).toLocaleDateString()}</td>
+                                                <td>
+                                                    <div style={{ fontWeight: 'bold' }}>{q.nombre || 'Desconocido'}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{q.telefono}</div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>{q['motivo de consulta'] || 'Sin motivo específico'}</div>
+                                                    {q['motivo de finalizacion'] && (
+                                                        <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#94a3b8' }}>
+                                                            {q['motivo de finalizacion']}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <span className="badge" style={{ 
+                                                        background: q['estado de la llamada']?.includes('Exitosa') ? 'rgba(16,185,129,0.15)' : 
+                                                                    q['estado de la llamada']?.toLowerCase().includes('no exist') ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
+                                                        color: q['estado de la llamada']?.includes('Exitosa') ? '#34d399' : 
+                                                               q['estado de la llamada']?.toLowerCase().includes('no exist') ? '#f87171' : '#fbbf24'
+                                                    }}>
+                                                        {q['estado de la llamada']}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style jsx="true">{`
                 .futuristic-card {
                     position: relative;
                     background: rgba(16, 20, 45, 0.4);

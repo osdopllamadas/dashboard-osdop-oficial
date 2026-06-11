@@ -6,8 +6,10 @@ const UsersManagement = () => {
   const { user, token } = useAuth();
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [rolePermissions, setRolePermissions] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('users'); // 'users' or 'roles'
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,15 +26,19 @@ const UsersManagement = () => {
     setError('');
     try {
       const headers = { 'Authorization': `Bearer ${token}` };
-      const [usersRes, logsRes] = await Promise.all([
+      const [usersRes, logsRes, permsRes] = await Promise.all([
         fetch('/api/users', { headers }),
-        fetch('/api/audit-logs', { headers })
+        fetch('/api/audit-logs', { headers }),
+        fetch('/api/roles/permissions', { headers })
       ]);
       
       if (!usersRes.ok || !logsRes.ok) throw new Error('Error al cargar datos de administración.');
       
       setUsers(await usersRes.json());
       setAuditLogs(await logsRes.json());
+      if (permsRes.ok) {
+        setRolePermissions(await permsRes.json());
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,7 +149,24 @@ const UsersManagement = () => {
           <p>Cargando información de usuarios y auditoría...</p>
         </div>
       ) : (
-        <div className="admin-grid">
+        <>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
+            <button 
+              onClick={() => setActiveTab('users')}
+              style={{ background: 'transparent', border: 'none', color: activeTab === 'users' ? '#3b82f6' : '#94a3b8', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: activeTab === 'users' ? '2px solid #3b82f6' : '2px solid transparent', transition: 'all 0.2s' }}
+            >
+              Usuarios y Auditoría
+            </button>
+            <button 
+              onClick={() => setActiveTab('roles')}
+              style={{ background: 'transparent', border: 'none', color: activeTab === 'roles' ? '#10b981' : '#94a3b8', fontSize: '1rem', fontWeight: 600, padding: '0.5rem 1rem', cursor: 'pointer', borderBottom: activeTab === 'roles' ? '2px solid #10b981' : '2px solid transparent', transition: 'all 0.2s' }}
+            >
+              Configuración de Perfiles
+            </button>
+          </div>
+
+          {activeTab === 'users' && (
+            <div className="admin-grid">
           {/* USERS TABLE */}
           <div className="admin-section">
             <div className="section-title">
@@ -244,6 +267,79 @@ const UsersManagement = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'roles' && rolePermissions && (
+        <div className="admin-section" style={{ maxWidth: '800px', margin: '0 auto', marginTop: '1rem' }}>
+          <div className="section-title">
+            <Shield size={18} className="text-secondary-gradient" />
+            <h3>Accesos por Perfil</h3>
+          </div>
+          <div className="table-container-modern glass custom-scrollbar">
+            <table className="modern-table">
+              <thead>
+                <tr>
+                  <th>Módulo / Ruta</th>
+                  <th style={{ textAlign: 'center' }}>Admin</th>
+                  <th style={{ textAlign: 'center' }}>Supervisor</th>
+                  <th style={{ textAlign: 'center' }}>Operador</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { path: '/', label: 'Dashboard General' },
+                  { path: '/afiliados', label: 'CRM Afiliados' },
+                  { path: '/tiempo-real', label: 'Tiempo Real (Live)' },
+                  { path: '/historial', label: 'Historial en Vivo' },
+                  { path: '/consultas', label: 'Consultas Generales' },
+                  { path: '/minutos', label: 'Minutos y Costos' },
+                  { path: '/usuarios', label: 'Gestión Usuarios' },
+                  { path: '/analista-ia', label: 'Analista IA' }
+                ].map(module => (
+                  <tr key={module.path}>
+                    <td className="fw-600">{module.label} <span className="text-muted text-sm">({module.path})</span></td>
+                    {['admin', 'supervisor', 'operator'].map(role => (
+                      <td key={role} style={{ textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={rolePermissions[role]?.includes(module.path) || false}
+                          onChange={async (e) => {
+                            const isChecked = e.target.checked;
+                            const currentPerms = rolePermissions[role] || [];
+                            const newPerms = isChecked 
+                              ? [...currentPerms, module.path] 
+                              : currentPerms.filter(p => p !== module.path);
+                            
+                            // Optimistic UI update
+                            setRolePermissions(prev => ({ ...prev, [role]: newPerms }));
+                            
+                            try {
+                              const res = await fetch('/api/roles/permissions', {
+                                method: 'PUT',
+                                headers: {
+                                  'Authorization': `Bearer ${token}`,
+                                  'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ role, permissions: newPerms })
+                              });
+                              if (!res.ok) throw new Error('Error saving permissions');
+                            } catch (err) {
+                              alert('Error al guardar permisos.');
+                              loadData(); // revert
+                            }
+                          }}
+                          style={{ transform: 'scale(1.3)', cursor: 'pointer' }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      </>
       )}
 
       {/* CREATE / EDIT MODAL */}
