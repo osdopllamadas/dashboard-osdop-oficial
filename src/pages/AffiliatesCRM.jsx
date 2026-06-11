@@ -4,6 +4,25 @@ import { useAuth } from '../context/AuthContext';
 
 const AffiliatesCRM = () => {
   const { user, token } = useAuth();
+
+  /**
+   * Formatea el teléfono anteponiendo +549 de forma inteligente:
+   * - Si ya tiene +549 → lo deja igual
+   * - Si tiene +54 pero no +549 → agrega el 9
+   * - Si empieza con 549 → agrega el +
+   * - Si empieza con 54 → agrega +5 y el 9
+   * - Si es solo número local (10 dígitos, empieza con 11,15,etc.) → antepone +549
+   * - Cualquier otro caso → antepone +549
+   */
+  const formatPhone = (raw) => {
+    if (!raw) return null;
+    const cleaned = String(raw).replace(/\s+/g, '').replace(/-/g, '');
+    if (cleaned.startsWith('+549')) return cleaned;
+    if (cleaned.startsWith('+54')) return '+549' + cleaned.slice(3);
+    if (cleaned.startsWith('549')) return '+' + cleaned;
+    if (cleaned.startsWith('54')) return '+549' + cleaned.slice(2);
+    return '+549' + cleaned;
+  };
   const [affiliations, setAffiliations] = useState([]);
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -196,7 +215,7 @@ const AffiliatesCRM = () => {
                       </td>
                       <td className="fw-600 text-primary">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Phone size={14} /> {aff.phone || <span className="text-muted text-sm">Sin teléfono</span>}
+                          <Phone size={14} /> {formatPhone(aff.phone) || <span className="text-muted text-sm">Sin teléfono</span>}
                         </div>
                       </td>
                       <td>
