@@ -67,7 +67,11 @@ export const ultravoxService = {
         const COST_PER_MINUTE = 0.065;
         const totalCalls = calls.length;
         const totalMinutes = calls.reduce((acc, call) => acc + (parseFloat(call.billedDuration || 0) / 60), 0);
-        const totalCost = totalMinutes * COST_PER_MINUTE;
+        // Calcula el costo de manera exacta sumando el costo INDIVIDUAL de cada llamada
+        const totalCost = calls.reduce((acc, call) => {
+            const minutes = parseFloat(call.billedDuration || 0) / 60;
+            return acc + (minutes * COST_PER_MINUTE);
+        }, 0);
 
         const transferCalls = calls.filter(call => {
             const hasTool = (call.transcript || '').toLowerCase().includes('transferirllamada');

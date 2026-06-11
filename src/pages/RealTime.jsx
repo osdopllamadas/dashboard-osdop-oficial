@@ -173,7 +173,7 @@ const RealTime = () => {
             <StatCard title="RESUELTAS VS TRANSFER." value={`${stats.effectiveTransfers + (consultasData.kpis.exitosas || 0)}`} sub={`${stats.totalTransfers} Transferencias`} icon={<CheckCircle />} color="green" formula="Resueltas vs Transf." />
             <StatCard title="LLAMADAS FALLIDAS" value={stats.failedCalls} icon={<AlertCircle />} color="red" formula="EndState != normal" />
             <StatCard title="TASA ÉXITO" value={stats.successRate} icon={<Activity />} color="cyan" formula="Success / Total" />
-            <StatCard title="DURACIÓN PROM." value={stats.avgDuration} icon={<Clock />} color="orange" formula="TotalSec / Count" />
+            <StatCard title="DURACIÓN TOTAL" value={`${stats.totalMinutes}m`} icon={<Clock />} color="orange" formula="Sum(Minutes)" />
             <StatCard title="COSTO TOTAL" value={`$${stats.totalCost}`} icon={<DollarSign />} color="purple" formula="Tasa $0.065/min" />
           </div>
 
