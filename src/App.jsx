@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
-import Login from './pages/Login';
-import RealTime from './pages/RealTime';
-import Minutes from './pages/Minutes';
-import Historial from './pages/Historial';
-import AIAnalyst from './pages/AIAnalyst';
-import LiveActivity from './pages/LiveActivity';
-import UsersManagement from './pages/UsersManagement';
-import AffiliatesCRM from './pages/AffiliatesCRM';
-import GeneralQueries from './pages/GeneralQueries';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { CallProvider } from './context/CallContext';
+import './index.css';
+
+const Login = React.lazy(() => import('./pages/Login'));
+const RealTime = React.lazy(() => import('./pages/RealTime'));
+const Minutes = React.lazy(() => import('./pages/Minutes'));
+const Historial = React.lazy(() => import('./pages/Historial'));
+const AIAnalyst = React.lazy(() => import('./pages/AIAnalyst'));
+const LiveActivity = React.lazy(() => import('./pages/LiveActivity'));
+const UsersManagement = React.lazy(() => import('./pages/UsersManagement'));
+const AffiliatesCRM = React.lazy(() => import('./pages/AffiliatesCRM'));
+const GeneralQueries = React.lazy(() => import('./pages/GeneralQueries'));
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CallProvider } from './context/CallContext';
 import './index.css';
@@ -91,58 +95,67 @@ function App() {
       <ErrorBoundary>
         <AuthProvider>
           <CallProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={
-                <ProtectedRoute requiredPath="/">
-                  <AppLayout><RealTime /></AppLayout>
-                </ProtectedRoute>
-              } />
+            <Suspense fallback={
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#080b1a' }}>
+                <div style={{ textAlign: 'center', color: '#60a5fa' }}>
+                  <div style={{ width: '40px', height: '40px', border: '3px solid rgba(96,165,250,0.2)', borderTop: '3px solid #60a5fa', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }}></div>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Cargando módulo...</p>
+                </div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={
+                  <ProtectedRoute requiredPath="/">
+                    <AppLayout><RealTime /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/tiempo-real" element={
-                <ProtectedRoute requiredPath="/tiempo-real">
-                  <AppLayout><LiveActivity /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/tiempo-real" element={
+                  <ProtectedRoute requiredPath="/tiempo-real">
+                    <AppLayout><LiveActivity /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/historial" element={
-                <ProtectedRoute requiredPath="/historial">
-                  <AppLayout><Historial /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/historial" element={
+                  <ProtectedRoute requiredPath="/historial">
+                    <AppLayout><Historial /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/consultas" element={
-                <ProtectedRoute requiredPath="/consultas">
-                  <AppLayout><GeneralQueries /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/consultas" element={
+                  <ProtectedRoute requiredPath="/consultas">
+                    <AppLayout><GeneralQueries /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/minutos" element={
-                <ProtectedRoute requiredPath="/minutos">
-                  <AppLayout><Minutes /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/minutos" element={
+                  <ProtectedRoute requiredPath="/minutos">
+                    <AppLayout><Minutes /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/analista-ia" element={
-                <ProtectedRoute requiredPath="/analista-ia">
-                  <AppLayout><AIAnalyst /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/analista-ia" element={
+                  <ProtectedRoute requiredPath="/analista-ia">
+                    <AppLayout><AIAnalyst /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/afiliados" element={
-                <ProtectedRoute requiredPath="/afiliados">
-                  <AppLayout><AffiliatesCRM /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/afiliados" element={
+                  <ProtectedRoute requiredPath="/afiliados">
+                    <AppLayout><AffiliatesCRM /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="/usuarios" element={
-                <ProtectedRoute requiredPath="/usuarios">
-                  <AppLayout><UsersManagement /></AppLayout>
-                </ProtectedRoute>
-              } />
+                <Route path="/usuarios" element={
+                  <ProtectedRoute requiredPath="/usuarios">
+                    <AppLayout><UsersManagement /></AppLayout>
+                  </ProtectedRoute>
+                } />
 
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Suspense>
           </CallProvider>
         </AuthProvider>
       </ErrorBoundary>
