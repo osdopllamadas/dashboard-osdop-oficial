@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build frontend
+      - name: Build frontend (verify)
         run: npm run build
 
       - name: Deploy to Contabo VPS via SSH
@@ -33,6 +33,6 @@ jobs:
           script: |
             cd ${{ secrets.VPS_PROJECT_PATH }}
             git pull origin main
-            docker compose down
-            docker compose up --build -d
+            docker build -t dashboard-osdop:latest .
+            docker stack deploy -c docker-compose.yml dashboard-osdop
             echo "✅ Deploy completado exitosamente"
